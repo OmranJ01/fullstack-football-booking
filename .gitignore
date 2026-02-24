@@ -1,0 +1,24 @@
+# env files
+.env
+**/.env
+
+# node modules
+node_modules
+**/node_modules
+
+# build folders
+dist
+build
+**/dist
+**/build
+
+# logs
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Prisma
+server/prisma/dev.db
+server/prisma/*.db
