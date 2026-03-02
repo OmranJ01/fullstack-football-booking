@@ -98,6 +98,12 @@ const IconDollar = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentCo
 const IconUsers2 = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>);
 const IconToggle = ({ on }) => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><rect x="1" y="5" width="22" height="14" rx="7"/><circle cx={on?16:8} cy="12" r="3" fill="currentColor"/></svg>);
 const IconFilter = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/></svg>);
+const IconBell = ({ filled }) => (<svg viewBox="0 0 24 24" fill={filled?"currentColor":"none"} stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>);
+const IconChat = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>);
+const IconGroup = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>);
+const IconSend = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>);
+const IconArrowLeft = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="18" height="18"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12,19 5,12 12,5"/></svg>);
+const IconShield = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="13" height="13"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>);
 const IconBookmark = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>);
 const IconArrow = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>);
 
@@ -113,7 +119,7 @@ function Avatar({ name, size = 38 }) {
 // ══════════════════════════════════════════════════════════════════
 function AuthPage({ onLogin }) {
   const [mode, setMode] = useState("login");
-  const [form, setForm] = useState({ name:"", email:"", password:"", userType:"player", location:"" });
+  const [form, setForm] = useState({ name:"", email:"", password:"", userType:"player", city:"", country:"" });
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -151,14 +157,16 @@ function AuthPage({ onLogin }) {
         <form onSubmit={submit} className="auth-form">
           {mode==="signup" && (<>
             <div className="field"><label>Full Name</label><input name="name" value={form.name} onChange={handle} placeholder="John Smith" required/></div>
-            <div className="field">
-              <label>I am a...</label>
+            <div className="field"><label>I am a...</label>
               <div className="type-selector">
                 <button type="button" className={`type-btn ${form.userType==="player"?"selected":""}`} onClick={()=>setForm({...form,userType:"player"})}><span className="type-icon"><IconBall/></span><span className="type-label">Player</span><span className="type-desc">Find & book matches</span></button>
                 <button type="button" className={`type-btn ${form.userType==="stadium_owner"?"selected":""}`} onClick={()=>setForm({...form,userType:"stadium_owner"})}><span className="type-icon"><IconStadium/></span><span className="type-label">Stadium Owner</span><span className="type-desc">Manage your venue</span></button>
               </div>
             </div>
-            <div className="field"><label>Location <span className="optional">(optional)</span></label><input name="location" value={form.location} onChange={handle} placeholder="Tel Aviv"/></div>
+            <div className="form-row">
+              <div className="field"><label>Country <span className="optional">(optional)</span></label><input name="country" value={form.country} onChange={handle} placeholder="Israel"/></div>
+              <div className="field"><label>City <span className="optional">(optional)</span></label><input name="city" value={form.city} onChange={handle} placeholder="Tel Aviv"/></div>
+            </div>
           </>)}
           <div className="field"><label>Email Address</label><input name="email" type="email" value={form.email} onChange={handle} placeholder="you@example.com" required/></div>
           <div className="field"><label>Password</label><div className="password-wrap"><input name="password" type={showPass?"text":"password"} value={form.password} onChange={handle} placeholder="••••••••" required/><button type="button" className="eye-btn" onClick={()=>setShowPass(!showPass)}><IconEye open={showPass}/></button></div></div>
@@ -283,11 +291,11 @@ function ScheduleBuilder({ stadiumId, onClose }) {
 // ══════════════════════════════════════════════════════════════════
 //  STADIUM FORM MODAL
 // ══════════════════════════════════════════════════════════════════
-const EMPTY_FORM = {name:"",location:"",description:"",price_per_hour:"",capacity:"",surface:"grass",phone:"",open_time:"08:00",close_time:"22:00"};
+const EMPTY_FORM = {name:"",city:"",country:"",description:"",price_per_hour:"",capacity:"",surface:"grass",phone:"",open_time:"08:00",close_time:"22:00"};
 
 function StadiumModal({ stadium, onClose, onSave }) {
   const [form, setForm] = useState(stadium ? {
-    name:stadium.name, location:stadium.location, description:stadium.description||"",
+    name:stadium.name, city:stadium.city||"", country:stadium.country||"", description:stadium.description||"",
     price_per_hour:stadium.price_per_hour, capacity:stadium.capacity||"",
     surface:stadium.surface||"grass", phone:stadium.phone||"",
     open_time:stadium.open_time?.slice(0,5)||"08:00", close_time:stadium.close_time?.slice(0,5)||"22:00",
@@ -314,9 +322,10 @@ function StadiumModal({ stadium, onClose, onSave }) {
           <button className="modal-close" onClick={onClose}><IconX/></button>
         </div>
         <form onSubmit={submit} className="modal-form">
+          <div className="field"><label>Stadium Name *</label><input name="name" value={form.name} onChange={handle} placeholder="Green Arena" required/></div>
           <div className="form-row">
-            <div className="field"><label>Stadium Name *</label><input name="name" value={form.name} onChange={handle} placeholder="Green Arena" required/></div>
-            <div className="field"><label>Location *</label><input name="location" value={form.location} onChange={handle} placeholder="Tel Aviv" required/></div>
+            <div className="field"><label>City *</label><input name="city" value={form.city} onChange={handle} placeholder="Madrid" required/></div>
+            <div className="field"><label>Country *</label><input name="country" value={form.country} onChange={handle} placeholder="Spain" required/></div>
           </div>
           <div className="field"><label>Description</label><textarea name="description" value={form.description} onChange={handle} placeholder="Describe your stadium..." rows={3}/></div>
           <div className="form-row">
@@ -619,7 +628,7 @@ function StadiumCard({ stadium, onEdit, onDelete, onToggle, onSchedule, onViewBo
         <div className="stadium-surface-dot" style={{background:color}}/>
         <div className="stadium-card-info">
           <h3 className="stadium-card-name">{stadium.name}</h3>
-          <span className="stadium-card-meta"><IconMapPin/> {stadium.location}</span>
+          <span className="stadium-card-meta"><IconMapPin/> {[stadium.city, stadium.country].filter(Boolean).join(', ')}</span>
         </div>
         <div className={`stadium-status-badge ${stadium.is_active?"active":"inactive"}`}>{stadium.is_active?"Active":"Inactive"}</div>
       </div>
@@ -702,85 +711,98 @@ function OwnerStadiumsPage() {
 // ══════════════════════════════════════════════════════════════════
 //  PLAYER: BROWSE STADIUMS
 // ══════════════════════════════════════════════════════════════════
-function BrowseStadiumsPage() {
+function BrowseStadiumsPage({ onMessageOwner }) {
   const [stadiums, setStadiums] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [filterDay, setFilterDay] = useState("");
-  const [filterSlot, setFilterSlot] = useState("");
+  const [filters, setFilters] = useState({ q: '', city: '', country: '', day: '', slot: '' });
   const [bookingStadium, setBookingStadium] = useState(null);
   const debounceRef = useRef(null);
 
   const TIME_OPTIONS = [];
-  for (let h = 6; h < 24; h++) TIME_OPTIONS.push(`${String(h).padStart(2,"0")}:00`);
+  for (let h = 6; h < 24; h++) TIME_OPTIONS.push(`${String(h).padStart(2,'0')}:00`);
 
-  const load = useCallback(async (q,day,slot) => {
+  const load = useCallback(async (f) => {
     setLoading(true);
     try {
-      let url = `/stadiums?q=${encodeURIComponent(q||"")}`;
-      if(day!=="") url+=`&day=${day}`;
-      if(day!==""&&slot) { const end=`${String(parseInt(slot)+1).padStart(2,"0")}:00`; url+=`&slot_start=${slot}&slot_end=${end}`; }
-      setStadiums(await apiCall(url));
+      const params = new URLSearchParams();
+      if (f.q) params.set('q', f.q);
+      if (f.city) params.set('city', f.city);
+      if (f.country) params.set('country', f.country);
+      if (f.day !== '') {
+        params.set('day', f.day);
+        if (f.slot) { const end = `${String(parseInt(f.slot)+1).padStart(2,'0')}:00`; params.set('slot_start', f.slot); params.set('slot_end', end); }
+      }
+      setStadiums(await apiCall(`/stadiums?${params}`));
     } catch {}
     setLoading(false);
-  },[]);
+  }, []);
 
-  useEffect(()=>{
+  const setFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val, ...(key === 'day' ? { slot: '' } : {}) }));
+
+  useEffect(() => {
     clearTimeout(debounceRef.current);
-    debounceRef.current=setTimeout(()=>load(query,filterDay,filterSlot),350);
-  },[query,filterDay,filterSlot,load]);
+    debounceRef.current = setTimeout(() => load(filters), 350);
+  }, [filters, load]);
 
-  const hasFilters = filterDay!=="";
+  const hasFilters = filters.q || filters.city || filters.country || filters.day !== '';
 
   return (
     <div className="stadiums-page">
       <div className="stadiums-header">
         <div><h2 className="page-title">Stadiums</h2><p className="page-sub">Browse and book available stadiums</p></div>
       </div>
-      <div className="browse-filters">
-        <div className="search-bar" style={{flex:2}}>
+
+      {/* 4-field filter bar */}
+      <div className="browse-filters" style={{ flexWrap: 'wrap', gap: 10 }}>
+        <div className="search-bar" style={{ flex: '2 1 160px', minWidth: 140 }}>
           <span className="search-icon"><IconSearch/></span>
-          <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search by name or location..."/>
+          <input value={filters.q} onChange={e => setFilter('q', e.target.value)} placeholder="Stadium name..."/>
         </div>
-        <div className="filter-group">
-          <span className="filter-label"><IconFilter/></span>
-          <select value={filterDay} onChange={e=>{setFilterDay(e.target.value);setFilterSlot("");}} className="filter-select">
-            <option value="">Any Day</option>
-            {DAYS.map((d,i)=><option key={i} value={i}>{d}</option>)}
+        <input className="filter-input" value={filters.country} onChange={e => setFilter('country', e.target.value)} placeholder="🌍 Country" style={{ flex: '1 1 110px', minWidth: 100 }}/>
+        <input className="filter-input" value={filters.city} onChange={e => setFilter('city', e.target.value)} placeholder="📍 City" style={{ flex: '1 1 110px', minWidth: 100 }}/>
+        <select className="filter-select" value={filters.day} onChange={e => setFilter('day', e.target.value)}>
+          <option value="">📅 Any Day</option>
+          {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+        </select>
+        {filters.day !== '' && (
+          <select className="filter-select" value={filters.slot} onChange={e => setFilter('slot', e.target.value)}>
+            <option value="">Any Time</option>
+            {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
-          {filterDay!==""&&(
-            <select value={filterSlot} onChange={e=>setFilterSlot(e.target.value)} className="filter-select">
-              <option value="">Any Time</option>
-              {TIME_OPTIONS.map(t=><option key={t} value={t}>{t}</option>)}
-            </select>
-          )}
-          {hasFilters&&<button className="clear-filters" onClick={()=>{setFilterDay("");setFilterSlot("");}}>✕ Clear</button>}
-        </div>
+        )}
+        {hasFilters && <button className="clear-filters" onClick={() => setFilters({ q: '', city: '', country: '', day: '', slot: '' })}>✕ Clear</button>}
       </div>
-      {loading&&<div className="center-spinner" style={{padding:40}}><span className="spinner large"/></div>}
-      {!loading&&stadiums.length===0&&<div className="empty-state"><div className="empty-icon"><IconStadium/></div><p>{hasFilters?"No stadiums match your filters":"No stadiums available yet"}</p></div>}
+
+      {loading && <div className="center-spinner" style={{ padding: 40 }}><span className="spinner large"/></div>}
+      {!loading && stadiums.length === 0 && <div className="empty-state"><div className="empty-icon"><IconStadium/></div><p>{hasFilters ? 'No stadiums match your filters' : 'No stadiums available yet'}</p></div>}
       <div className="stadium-grid">
-        {stadiums.map(s=>{
-          const color=SURFACE_COLOR[s.surface]||"#4ade80";
+        {stadiums.map(s => {
+          const color = SURFACE_COLOR[s.surface] || '#4ade80';
           return (
             <div key={s.id} className="stadium-card browse">
               <div className="stadium-card-header">
-                <div className="stadium-surface-dot" style={{background:color}}/>
+                <div className="stadium-surface-dot" style={{ background: color }}/>
                 <div className="stadium-card-info">
                   <h3 className="stadium-card-name">{s.name}</h3>
-                  <span className="stadium-card-meta"><IconMapPin/> {s.location}</span>
+                  <span className="stadium-card-meta"><IconMapPin/> {[s.city, s.country].filter(Boolean).join(', ')}</span>
                 </div>
-                <span className="surface-tag" style={{color,borderColor:`${color}40`,background:`${color}10`,fontSize:11}}>{SURFACES[s.surface]}</span>
+                <span className="surface-tag" style={{ color, borderColor: `${color}40`, background: `${color}10`, fontSize: 11 }}>{SURFACES[s.surface]}</span>
               </div>
-              {s.description&&<p className="stadium-card-desc">{s.description}</p>}
+              {s.description && <p className="stadium-card-desc">{s.description}</p>}
               <div className="stadium-card-stats">
                 <div className="stat"><IconDollar/><span>₪{Number(s.price_per_hour).toLocaleString()}/hr</span></div>
-                {s.capacity&&<div className="stat"><IconUsers2/><span>{s.capacity} players</span></div>}
+                {s.capacity && <div className="stat"><IconUsers2/><span>{s.capacity} players</span></div>}
                 <div className="stat"><IconClock/><span>{s.open_time?.slice(0,5)} – {s.close_time?.slice(0,5)}</span></div>
-                {s.phone&&<div className="stat"><IconPhone/><span>{s.phone}</span></div>}
+                {s.phone && <div className="stat"><IconPhone/><span>{s.phone}</span></div>}
               </div>
               <div className="browse-owner"><Avatar name={s.owner_name} size={22}/><span>by {s.owner_name}</span></div>
-              <button className="book-btn" onClick={()=>setBookingStadium(s)}><IconCalendar/> Book a Slot</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="book-btn" style={{ flex: 1 }} onClick={() => setBookingStadium(s)}><IconCalendar/> Book a Slot</button>
+                <button className="book-btn" style={{ flex: 1, background: 'rgba(74,222,128,0.08)', color: 'var(--primary)', border: '1px solid rgba(74,222,128,0.25)' }}
+                  onClick={() => onMessageOwner && onMessageOwner({ partner_id: s.owner_id, partner_name: s.owner_name, partner_role: 'Stadium Owner' })}>
+                  <IconChat /> Message
+                </button>
+              </div>
             </div>
           );
         })}
@@ -829,7 +851,7 @@ function MyBookingsPage() {
           <div key={b.id} className="booking-card">
             <div className="booking-stadium-info">
               <div className="booking-stadium-name">{b.stadium_name}</div>
-              <div className="booking-meta"><IconMapPin/> {b.stadium_location}</div>
+              <div className="booking-meta"><IconMapPin/> {[b.stadium_city, b.stadium_country].filter(Boolean).join(', ')}</div>
             </div>
             <div className="booking-slot-info">
               <span className="booking-day">{DAYS[b.day_of_week]}</span>
@@ -855,19 +877,22 @@ function MyBookingsPage() {
 // ══════════════════════════════════════════════════════════════════
 //  PLAYERS PAGE
 // ══════════════════════════════════════════════════════════════════
-function PlayerCard({ player, currentUserId, onAction, actionLoading }) {
-  const { id, name, location, friendship_status, friendship_requester } = player;
+function PlayerCard({ player, currentUserId, onAction, actionLoading, onViewAvailability }) {
+  const { id, name, city, country, friendship_status, friendship_requester, has_availability } = player;
   const isFriend = friendship_status==="accepted";
   const isPendingFromMe = friendship_status==="pending"&&Number(friendship_requester)===currentUserId;
   const isPendingToMe = friendship_status==="pending"&&Number(friendship_requester)!==currentUserId;
+  const locationStr = [city, country].filter(Boolean).join(', ');
   return (
     <div className="player-card">
       <Avatar name={name}/>
       <div className="player-info">
         <span className="player-name">{name}</span>
-        {location&&<span className="player-meta"><IconMapPin/> {location}</span>}
+        {locationStr&&<span className="player-meta"><IconMapPin/> {locationStr}</span>}
+        {has_availability&&<span className="avail-badge">📅 Has availability</span>}
       </div>
       <div className="player-actions">
+        {has_availability&&<button className="action-btn muted" style={{fontSize:11,padding:'5px 8px'}} onClick={()=>onViewAvailability&&onViewAvailability(player)}>Schedule</button>}
         {isFriend&&(<><span className="friend-badge">Friends</span><button className="action-btn danger" onClick={()=>onAction("remove",id)} disabled={actionLoading===id}>{actionLoading===id?<span className="spinner sm"/>:<IconUserMinus/>}</button></>)}
         {isPendingFromMe&&(<button className="action-btn muted" onClick={()=>onAction("cancel",id)} disabled={actionLoading===id}>{actionLoading===id?<span className="spinner sm"/>:<><span>Pending</span><IconX/></>}</button>)}
         {isPendingToMe&&(<><button className="action-btn success" onClick={()=>onAction("accept",id,String(friendship_requester))} disabled={actionLoading===id}>{actionLoading===id?<span className="spinner sm"/>:<><IconCheck/><span>Accept</span></>}</button><button className="action-btn danger-sm" onClick={()=>onAction("decline",id,String(friendship_requester))} disabled={actionLoading===id}><IconX/></button></>)}
@@ -877,74 +902,1133 @@ function PlayerCard({ player, currentUserId, onAction, actionLoading }) {
   );
 }
 
+// ── Player Availability Viewer (read-only) ─────────────────────
+function PlayerAvailabilityModal({ player, onClose }) {
+  const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    apiCall(`/players/${player.id}/availability`).then(s => { setSlots(s); setLoading(false); }).catch(() => setLoading(false));
+  }, [player.id]);
+  const byDay = DAYS.map((_, i) => slots.filter(s => s.day_of_week === i));
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div><h2 className="modal-title">{player.name}'s Availability</h2><p style={{fontSize:12,color:'var(--text-muted)',marginTop:3}}>Weekly schedule</p></div>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <div className="modal-form">
+          {loading ? <div className="center-spinner"><span className="spinner large"/></div> : (
+            <div className="avail-grid">
+              {DAYS.map((day, i) => (
+                <div key={i} className={`avail-day-row ${byDay[i].length ? 'has-slots' : 'empty-day'}`}>
+                  <span className="avail-day-label">{day.slice(0,3)}</span>
+                  <div className="avail-slots">
+                    {byDay[i].length ? byDay[i].map((s,j) => (
+                      <span key={j} className="avail-slot-chip">{s.slot_start.slice(0,5)} – {s.slot_end.slice(0,5)}</span>
+                    )) : <span className="avail-none">Not available</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── My Availability Manager ────────────────────────────────────
+function MyAvailabilityModal({ onClose }) {
+  const [slots, setSlots] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(null);
+  const TIMES = [];
+  for (let h = 6; h <= 23; h++) { TIMES.push(`${String(h).padStart(2,'0')}:00`); TIMES.push(`${String(h).padStart(2,'0')}:30`); }
+
+  useEffect(() => {
+    apiCall('/players/availability').then(data => {
+      const map = {};
+      data.forEach(s => {
+        if (!map[s.day_of_week]) map[s.day_of_week] = [];
+        map[s.day_of_week].push({ start: s.slot_start.slice(0,5), end: s.slot_end.slice(0,5) });
+      });
+      setSlots(map);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const addSlot = (day) => {
+    setSlots(prev => ({ ...prev, [day]: [...(prev[day]||[]), { start: '08:00', end: '10:00' }] }));
+  };
+  const removeSlot = (day, idx) => {
+    setSlots(prev => { const arr = [...(prev[day]||[])]; arr.splice(idx,1); return { ...prev, [day]: arr }; });
+  };
+  const updateSlot = (day, idx, field, val) => {
+    setSlots(prev => { const arr = [...(prev[day]||[])]; arr[idx] = { ...arr[idx], [field]: val }; return { ...prev, [day]: arr }; });
+  };
+  const saveDay = async (day) => {
+    setSaving(day);
+    try {
+      const daySlots = (slots[day]||[]).map(s => ({ slot_start: s.start, slot_end: s.end }));
+      await apiCall(`/players/availability/${day}`, 'PUT', { slots: daySlots });
+    } catch {}
+    setSaving(null);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxWidth: 620, maxHeight: '88vh', overflowY: 'auto' }}>
+        <div className="modal-header">
+          <div><h2 className="modal-title">My Availability</h2><p style={{fontSize:12,color:'var(--text-muted)',marginTop:3}}>Set when you're free to play each week</p></div>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <div className="modal-form">
+          {loading ? <div className="center-spinner"><span className="spinner large"/></div> : DAYS.map((day, i) => (
+            <div key={i} className="avail-editor-day">
+              <div className="avail-editor-header">
+                <span className="avail-day-label">{day}</span>
+                <div style={{display:'flex',gap:8}}>
+                  <button className="action-btn primary" style={{fontSize:12,padding:'4px 10px'}} onClick={() => addSlot(i)}>+ Add slot</button>
+                  <button className="action-btn success" style={{fontSize:12,padding:'4px 10px'}} onClick={() => saveDay(i)} disabled={saving===i}>
+                    {saving===i ? <span className="spinner sm"/> : 'Save'}
+                  </button>
+                </div>
+              </div>
+              {(slots[i]||[]).length === 0 && <p className="avail-none" style={{marginLeft:8}}>No slots — not available</p>}
+              {(slots[i]||[]).map((s, j) => (
+                <div key={j} className="slot-row">
+                  <select className="time-select" value={s.start} onChange={e => updateSlot(i,j,'start',e.target.value)}>
+                    {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <span style={{color:'var(--text-muted)',fontSize:13}}>to</span>
+                  <select className="time-select" value={s.end} onChange={e => updateSlot(i,j,'end',e.target.value)}>
+                    {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <button className="action-btn danger-sm" onClick={() => removeSlot(i,j)}><IconX/></button>
+                </div>
+              ))}
+            </div>
+          ))}
+          <div className="modal-actions">
+            <button className="submit-btn" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PlayersPage({ user }) {
   const [tab, setTab] = useState("search");
-  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState({ q: '', city: '', country: '', day: '' });
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
   const [friends, setFriends] = useState([]);
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const [actionLoading, setActionLoading] = useState(null);
+  const [viewAvailPlayer, setViewAvailPlayer] = useState(null);
+  const [showMyAvail, setShowMyAvail] = useState(false);
   const debounceRef = useRef(null);
 
-  const loadFriends = useCallback(async()=>{
-    try{ const [f,inc,out]=await Promise.all([apiCall("/friends"),apiCall("/friends/requests/incoming"),apiCall("/friends/requests/outgoing")]); setFriends(f);setIncoming(inc);setOutgoing(out); }catch{}
-  },[]);
-  useEffect(()=>{loadFriends();},[loadFriends]);
+  const loadFriends = useCallback(async () => {
+    try {
+      const [f, inc, out] = await Promise.all([apiCall("/friends"), apiCall("/friends/requests/incoming"), apiCall("/friends/requests/outgoing")]);
+      setFriends(f); setIncoming(inc); setOutgoing(out);
+    } catch {}
+  }, []);
+  useEffect(() => { loadFriends(); }, [loadFriends]);
 
-  useEffect(()=>{
+  const doSearch = useCallback(async (f) => {
+    const params = new URLSearchParams();
+    if (f.q) params.set('q', f.q);
+    if (f.city) params.set('city', f.city);
+    if (f.country) params.set('country', f.country);
+    if (f.day !== '') params.set('day', f.day);
+    if (!f.q && !f.city && !f.country && f.day === '') { setSearchResults([]); setHasSearched(false); return; }
+    setSearching(true); setHasSearched(true);
+    try { setSearchResults(await apiCall(`/players/search?${params}`)); } catch {}
+    setSearching(false);
+  }, []);
+
+  useEffect(() => {
     clearTimeout(debounceRef.current);
-    if(!query.trim()){setSearchResults([]);return;}
-    debounceRef.current=setTimeout(async()=>{
-      setSearching(true);
-      try{setSearchResults(await apiCall(`/players/search?q=${encodeURIComponent(query)}`));}catch{}
-      setSearching(false);
-    },350);
-  },[query]);
+    debounceRef.current = setTimeout(() => doSearch(filters), 350);
+  }, [filters, doSearch]);
 
-  const handleAction = async(action,targetId,requesterId)=>{
+  const setFilter = (key, val) => setFilters(prev => ({ ...prev, [key]: val }));
+
+  const handleAction = async (action, targetId, requesterId) => {
     setActionLoading(targetId);
-    try{
-      if(action==="add") await apiCall("/friends/request","POST",{addresseeId:targetId});
-      else if(action==="cancel"||action==="remove") await apiCall(`/friends/${targetId}`,"DELETE");
-      else if(action==="accept") await apiCall(`/friends/${requesterId}/respond`,"PATCH",{action:"accept"});
-      else if(action==="decline") await apiCall(`/friends/${requesterId}/respond`,"PATCH",{action:"decline"});
+    try {
+      if (action === "add") await apiCall("/friends/request", "POST", { addresseeId: targetId });
+      else if (action === "cancel" || action === "remove") await apiCall(`/friends/${targetId}`, "DELETE");
+      else if (action === "accept") await apiCall(`/friends/${requesterId}/respond`, "PATCH", { action: "accept" });
+      else if (action === "decline") await apiCall(`/friends/${requesterId}/respond`, "PATCH", { action: "decline" });
       await loadFriends();
-      if(query.trim()) setSearchResults(await apiCall(`/players/search?q=${encodeURIComponent(query)}`));
-    }catch(err){console.error(err);}
+      doSearch(filters);
+    } catch (err) { console.error(err); }
     setActionLoading(null);
   };
+
+  const hasFilters = filters.q || filters.city || filters.country || filters.day !== '';
 
   return (
     <div className="players-page">
       <div className="sub-tabs">
-        <button className={`sub-tab ${tab==="search"?"active":""}`} onClick={()=>setTab("search")}><IconSearch/> Search Players</button>
+        <button className={`sub-tab ${tab==="search"?"active":""}`} onClick={()=>setTab("search")}><IconSearch/> Search</button>
         <button className={`sub-tab ${tab==="friends"?"active":""}`} onClick={()=>setTab("friends")}><IconUsers/> Friends{friends.length>0&&<span className="count-badge neutral">{friends.length}</span>}</button>
         <button className={`sub-tab ${tab==="requests"?"active":""}`} onClick={()=>setTab("requests")}>Requests{incoming.length>0&&<span className="count-badge green">{incoming.length}</span>}</button>
+        <button className={`sub-tab`} onClick={()=>setShowMyAvail(true)}>📅 My Availability</button>
       </div>
-      {tab==="search"&&(<div className="tab-content">
-        <div className="search-bar"><span className="search-icon"><IconSearch/></span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search by name or city..." autoFocus/>{searching&&<span className="spinner sm" style={{position:"absolute",right:14}}/>}</div>
-        {!query.trim()&&<div className="empty-state"><div className="empty-icon"><IconSearch/></div><p>Search for players by name or location</p></div>}
-        {query.trim()&&!searching&&searchResults.length===0&&<div className="empty-state"><div className="empty-icon"><IconUsers/></div><p>No players found for "<strong>{query}</strong>"</p></div>}
-        <div className="player-list">{searchResults.map(p=><PlayerCard key={p.id} player={p} currentUserId={user.id} onAction={handleAction} actionLoading={actionLoading}/>)}</div>
-      </div>)}
-      {tab==="friends"&&(<div className="tab-content">{friends.length===0?<div className="empty-state"><div className="empty-icon"><IconUsers/></div><p>No friends yet!</p></div>:<div className="player-list">{friends.map(f=><PlayerCard key={f.id} player={{...f,friendship_status:"accepted"}} currentUserId={user.id} onAction={handleAction} actionLoading={actionLoading}/>)}</div>}</div>)}
-      {tab==="requests"&&(<div className="tab-content">
+
+      {tab==="search" && (
+        <div className="tab-content">
+          {/* Filter bar */}
+          <div className="player-filter-bar">
+            <div className="search-bar" style={{flex:2,minWidth:160}}>
+              <span className="search-icon"><IconSearch/></span>
+              <input value={filters.q} onChange={e=>setFilter('q',e.target.value)} placeholder="Search by name..." />
+              {searching && <span className="spinner sm" style={{position:'absolute',right:14}}/>}
+            </div>
+            <input className="filter-input" value={filters.country} onChange={e=>setFilter('country',e.target.value)} placeholder="🌍 Country"/>
+            <input className="filter-input" value={filters.city} onChange={e=>setFilter('city',e.target.value)} placeholder="📍 City"/>
+            <select className="filter-select" value={filters.day} onChange={e=>setFilter('day',e.target.value)}>
+              <option value="">📅 Any day</option>
+              {DAYS.map((d,i)=><option key={i} value={i}>{d}</option>)}
+            </select>
+            {hasFilters && <button className="action-btn muted" style={{fontSize:12,whiteSpace:'nowrap'}} onClick={()=>setFilters({q:'',city:'',country:'',day:''})}>Clear</button>}
+          </div>
+          {!hasSearched && <div className="empty-state"><div className="empty-icon"><IconSearch/></div><p>Filter players by name, country, city or availability day</p></div>}
+          {hasSearched && !searching && searchResults.length===0 && <div className="empty-state"><div className="empty-icon"><IconUsers/></div><p>No players found</p></div>}
+          <div className="player-list">
+            {searchResults.map(p => <PlayerCard key={p.id} player={p} currentUserId={user.id} onAction={handleAction} actionLoading={actionLoading} onViewAvailability={setViewAvailPlayer}/>)}
+          </div>
+        </div>
+      )}
+      {tab==="friends" && (<div className="tab-content">{friends.length===0?<div className="empty-state"><div className="empty-icon"><IconUsers/></div><p>No friends yet!</p></div>:<div className="player-list">{friends.map(f=><PlayerCard key={f.id} player={{...f,friendship_status:"accepted"}} currentUserId={user.id} onAction={handleAction} actionLoading={actionLoading} onViewAvailability={setViewAvailPlayer}/>)}</div>}</div>)}
+      {tab==="requests" && (<div className="tab-content">
         {incoming.length>0&&<div className="requests-section"><h3 className="section-label">Incoming <span className="count-badge green">{incoming.length}</span></h3><div className="player-list">{incoming.map(p=><PlayerCard key={p.id} player={{...p,friendship_status:"pending",friendship_requester:p.id}} currentUserId={user.id} onAction={handleAction} actionLoading={actionLoading}/>)}</div></div>}
         {outgoing.length>0&&<div className="requests-section"><h3 className="section-label">Sent</h3><div className="player-list">{outgoing.map(p=><PlayerCard key={p.id} player={{...p,friendship_status:"pending",friendship_requester:user.id}} currentUserId={user.id} onAction={handleAction} actionLoading={actionLoading}/>)}</div></div>}
         {incoming.length===0&&outgoing.length===0&&<div className="empty-state"><div className="empty-icon"><IconClock/></div><p>No pending requests</p></div>}
       </div>)}
+      {viewAvailPlayer && <PlayerAvailabilityModal player={viewAvailPlayer} onClose={()=>setViewAvailPlayer(null)}/>}
+      {showMyAvail && <MyAvailabilityModal onClose={()=>setShowMyAvail(false)}/>}
     </div>
   );
 }
 
 // ══════════════════════════════════════════════════════════════════
-//  HOME PAGE
+//  NOTIFICATIONS PANEL
 // ══════════════════════════════════════════════════════════════════
+function NotificationsPanel({ onClose, onUnreadChange }) {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiCall('/notifications');
+      setNotifications(data);
+      const unread = data.filter(n => !n.is_read).length;
+      onUnreadChange(unread);
+    } catch {}
+    setLoading(false);
+  }, [onUnreadChange]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const markAllRead = async () => {
+    await apiCall('/notifications/read-all', 'PATCH');
+    setNotifications(n => n.map(x => ({ ...x, is_read: true })));
+    onUnreadChange(0);
+  };
+
+  const markRead = async (id) => {
+    await apiCall(`/notifications/${id}/read`, 'PATCH');
+    setNotifications(n => n.map(x => x.id === id ? { ...x, is_read: true } : x));
+    onUnreadChange(notifications.filter(n => !n.is_read && n.id !== id).length);
+  };
+
+  const typeIcon = (type) => {
+    if (type === 'message') return '💬';
+    if (type === 'friend_request') return '👋';
+    if (type === 'group_invite') return '⚽';
+    if (type === 'booking') return '📅';
+    return '🔔';
+  };
+
+  const timeAgo = (ts) => {
+    const diff = Date.now() - new Date(ts);
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
+
+  return (
+    <div className="notif-panel">
+      <div className="notif-header">
+        <span className="notif-title">Notifications</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {notifications.some(n => !n.is_read) && (
+            <button className="notif-mark-all" onClick={markAllRead}>Mark all read</button>
+          )}
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+      </div>
+      {loading && <div className="center-spinner" style={{ padding: 24 }}><span className="spinner large" /></div>}
+      {!loading && notifications.length === 0 && (
+        <div className="notif-empty"><IconBell /><p>No notifications yet</p></div>
+      )}
+      <div className="notif-list">
+        {notifications.map(n => (
+          <div key={n.id} className={`notif-item ${!n.is_read ? 'unread' : ''}`} onClick={() => !n.is_read && markRead(n.id)}>
+            <span className="notif-icon">{typeIcon(n.type)}</span>
+            <div className="notif-body">
+              <p className="notif-msg">{n.message}</p>
+              <span className="notif-time">{timeAgo(n.created_at)}</span>
+            </div>
+            {!n.is_read && <div className="notif-dot" />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DIRECT CHAT
+// ══════════════════════════════════════════════════════════════════
+// Reusable chat window — used by ChatPage and anywhere else
+function ChatWindow({ user, partner, onBack }) {
+  const [messages, setMessages] = useState([]);
+  const [newMsg, setNewMsg] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const messagesEndRef = useRef(null);
+  const pollRef = useRef(null);
+
+  const loadMessages = useCallback(async () => {
+    try { setMessages(await apiCall(`/messages/${partner.partner_id}`)); }
+    catch {} setLoading(false);
+  }, [partner.partner_id]);
+
+  useEffect(() => {
+    loadMessages();
+    pollRef.current = setInterval(loadMessages, 3000);
+    return () => clearInterval(pollRef.current);
+  }, [loadMessages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const sendMessage = async (e) => {
+    e?.preventDefault();
+    if (!newMsg.trim() || sending) return;
+    setSending(true);
+    try {
+      const msg = await apiCall('/messages', 'POST', { receiverId: partner.partner_id, content: newMsg });
+      setMessages(prev => [...prev, { ...msg, sender_name: user.name }]);
+      setNewMsg('');
+    } catch {}
+    setSending(false);
+  };
+
+  const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <>
+      <div className="chat-main-header">
+        <button className="back-btn" onClick={onBack}><IconArrowLeft /></button>
+        <Avatar name={partner.partner_name} size={36} />
+        <div>
+          <span className="chat-partner-name">{partner.partner_name}</span>
+          {[partner.partner_city, partner.partner_country].filter(Boolean).join(', ') && <span className="chat-partner-loc"><IconMapPin /> {[partner.partner_city, partner.partner_country].filter(Boolean).join(', ')}</span>}
+          {partner.partner_role && <span className="chat-partner-loc" style={{color:'#f59e0b'}}>⚽ {partner.partner_role}</span>}
+        </div>
+      </div>
+      <div className="messages-list">
+        {loading && <div className="center-spinner"><span className="spinner large" /></div>}
+        {!loading && messages.length === 0 && <div className="chat-empty-hint">Say hi! 👋</div>}
+        {messages.map((m, i) => {
+          const isMe = m.sender_id === user.id;
+          const showName = !isMe && (i === 0 || messages[i-1]?.sender_id !== m.sender_id);
+          return (
+            <div key={m.id} className={`message-row ${isMe ? 'me' : 'them'}`}>
+              {!isMe && showName && <Avatar name={m.sender_name} size={28} />}
+              {!isMe && !showName && <div style={{ width: 28 }} />}
+              <div className="message-bubble">
+                <p>{m.content}</p>
+                <span className="message-time">{formatTime(m.created_at)}</span>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+      <form className="message-input-row" onSubmit={sendMessage}>
+        <input value={newMsg} onChange={e => setNewMsg(e.target.value)}
+          placeholder="Type a message..." className="message-input" disabled={sending} />
+        <button type="submit" className="send-btn" disabled={!newMsg.trim() || sending}>
+          {sending ? <span className="spinner sm" /> : <IconSend />}
+        </button>
+      </form>
+    </>
+  );
+}
+
+function ChatPage({ user, initialPartner }) {
+  const [contacts, setContacts] = useState([]); // friends + owners from conversations
+  const [loading, setLoading] = useState(true);
+  const [activeConv, setActiveConv] = useState(initialPartner || null);
+  const [search, setSearch] = useState('');
+
+  const loadContacts = useCallback(async () => {
+    try {
+      // Load friends + existing conversations merged into one list
+      const [friends, convs] = await Promise.all([
+        apiCall('/friends'),
+        apiCall('/messages/conversations'),
+      ]);
+      // Build a map by id so we merge duplicates (friend with existing conv)
+      const map = new Map();
+      friends.forEach(f => map.set(f.id, {
+        partner_id: f.id,
+        partner_name: f.name,
+        partner_city: f.city, partner_country: f.country,
+        partner_role: 'Friend',
+        last_message: null,
+        unread_count: 0,
+      }));
+      convs.forEach(c => {
+        const existing = map.get(c.partner_id);
+        map.set(c.partner_id, {
+          partner_id: c.partner_id,
+          partner_name: c.partner_name,
+          partner_city: c.partner_city, partner_country: c.partner_country,
+          partner_role: existing?.partner_role || null,
+          last_message: c.last_message,
+          last_message_at: c.last_message_at,
+          unread_count: c.unread_count,
+        });
+      });
+      // Sort: conversations with messages first (by recency), then friends
+      const sorted = [...map.values()].sort((a, b) => {
+        if (a.last_message_at && b.last_message_at) return new Date(b.last_message_at) - new Date(a.last_message_at);
+        if (a.last_message_at) return -1;
+        if (b.last_message_at) return 1;
+        return a.partner_name.localeCompare(b.partner_name);
+      });
+      setContacts(sorted);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadContacts(); }, [loadContacts]);
+
+  // If initialPartner was passed (from stadium card), open that chat
+  useEffect(() => {
+    if (initialPartner) setActiveConv(initialPartner);
+  }, [initialPartner]);
+
+  const filtered = contacts.filter(c =>
+    c.partner_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="chat-page">
+      {/* Sidebar */}
+      <div className={`chat-sidebar ${activeConv ? 'hidden-mobile' : ''}`}>
+        <div className="chat-sidebar-header">
+          <h2 className="page-title">Messages</h2>
+          <p className="page-sub">Friends & conversations</p>
+        </div>
+        <div style={{ padding: '10px 16px' }}>
+          <div className="search-bar" style={{ height: 36 }}>
+            <span className="search-icon"><IconSearch /></span>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." />
+          </div>
+        </div>
+        {loading && <div className="center-spinner"><span className="spinner large" /></div>}
+        {!loading && contacts.length === 0 && (
+          <div className="empty-state" style={{ padding: 24 }}>
+            <div className="empty-icon"><IconChat /></div>
+            <p>Add friends in the Players tab to start chatting!</p>
+          </div>
+        )}
+        <div className="conv-list">
+          {filtered.map(c => (
+            <div key={c.partner_id}
+              className={`conv-item ${activeConv?.partner_id === c.partner_id ? 'active' : ''}`}
+              onClick={() => { setActiveConv(c); loadContacts(); }}>
+              <Avatar name={c.partner_name} size={42} />
+              <div className="conv-info">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="conv-name">{c.partner_name}</span>
+                  {c.partner_role && <span className="conv-role-tag">{c.partner_role}</span>}
+                </div>
+                <span className="conv-last">
+                  {c.last_message ? c.last_message.slice(0, 35) + (c.last_message.length > 35 ? '...' : '') : 'Tap to start chatting'}
+                </span>
+              </div>
+              {c.unread_count > 0 && <span className="count-badge green">{c.unread_count}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main chat area */}
+      <div className={`chat-main ${!activeConv ? 'hidden-mobile' : ''}`}>
+        {!activeConv ? (
+          <div className="chat-empty-state">
+            <div className="chat-empty-icon"><IconChat /></div>
+            <p>Select a friend to start chatting</p>
+          </div>
+        ) : (
+          <ChatWindow
+            user={user}
+            partner={activeConv}
+            onBack={() => { setActiveConv(null); loadContacts(); }}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  GROUPS PAGE
+// ══════════════════════════════════════════════════════════════════
+function GroupsPage({ user }) {
+  const [tab, setTab] = useState('my');
+  const [groups, setGroups] = useState([]);
+  const [invites, setInvites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [activeGroup, setActiveGroup] = useState(null);
+
+  const loadGroups = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [g, inv] = await Promise.all([apiCall('/groups/mine'), apiCall('/groups/invites/pending')]);
+      setGroups(g); setInvites(inv);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadGroups(); }, [loadGroups]);
+
+  const respondInvite = async (groupId, action) => {
+    try {
+      await apiCall(`/groups/${groupId}/respond`, 'PATCH', { action });
+      await loadGroups();
+      if (action === 'accept') setTab('my');
+    } catch {}
+  };
+
+  if (activeGroup) {
+    return <GroupDetail group={activeGroup} user={user} onBack={() => { setActiveGroup(null); loadGroups(); }} />;
+  }
+
+  return (
+    <div className="groups-page">
+      <div className="stadiums-header">
+        <div>
+          <h2 className="page-title">Groups & Matches</h2>
+          <p className="page-sub">Organize matches with your friends</p>
+        </div>
+        <button className="submit-btn" style={{ width: 'auto', padding: '10px 20px' }} onClick={() => setShowCreate(true)}>
+          <IconPlus /> Create Group
+        </button>
+      </div>
+
+      <div className="sub-tabs">
+        <button className={`sub-tab ${tab === 'my' ? 'active' : ''}`} onClick={() => setTab('my')}>
+          <IconGroup /> My Groups {groups.length > 0 && <span className="count-badge neutral">{groups.length}</span>}
+        </button>
+        <button className={`sub-tab ${tab === 'invites' ? 'active' : ''}`} onClick={() => setTab('invites')}>
+          Invites {invites.length > 0 && <span className="count-badge green">{invites.length}</span>}
+        </button>
+      </div>
+
+      {loading && <div className="center-spinner" style={{ padding: 40 }}><span className="spinner large" /></div>}
+
+      {!loading && tab === 'my' && (
+        <div className="tab-content">
+          {groups.length === 0 ? (
+            <div className="empty-state large">
+              <div className="empty-icon large"><IconGroup /></div>
+              <p className="empty-title">No groups yet</p>
+              <p>Create a group and invite friends to organize a match</p>
+              <button className="cta-btn" style={{ marginTop: 16, width: 'auto' }} onClick={() => setShowCreate(true)}>
+                <IconPlus /> Create Your First Group
+              </button>
+            </div>
+          ) : (
+            <div className="group-grid">
+              {groups.map(g => (
+                <div key={g.id} className="group-card" onClick={() => setActiveGroup(g)}>
+                  <div className="group-card-header">
+                    <div className="group-avatar"><IconGroup /></div>
+                    <div>
+                      <h3 className="group-name">{g.name}</h3>
+                      <span className="group-meta">{g.member_count} player{g.member_count !== 1 ? 's' : ''}</span>
+                    </div>
+                    {g.unread_count > 0 && <span className="count-badge green" style={{ marginLeft: 'auto' }}>{g.unread_count}</span>}
+                  </div>
+                  {g.description && <p className="group-desc">{g.description}</p>}
+                  <div className="group-details">
+                    {g.stadium_name && <div className="stat"><IconStadium /><span>{g.stadium_name}</span></div>}
+                    {g.match_day !== null && <div className="stat"><IconCalendar /><span>{DAYS[g.match_day]}{g.match_start ? ` · ${g.match_start?.slice(0,5)}` : ''}</span></div>}
+                    <div className="stat"><IconUsers2 /><span>Max {g.max_players}</span></div>
+                  </div>
+                  {g.my_role === 'admin' && <span className="admin-badge"><IconShield /> Admin</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && tab === 'invites' && (
+        <div className="tab-content">
+          {invites.length === 0 ? (
+            <div className="empty-state"><div className="empty-icon"><IconGroup /></div><p>No pending invites</p></div>
+          ) : (
+            <div className="group-grid">
+              {invites.map(g => (
+                <div key={g.id} className="group-card invite-card">
+                  <div className="group-card-header">
+                    <div className="group-avatar"><IconGroup /></div>
+                    <div>
+                      <h3 className="group-name">{g.name}</h3>
+                      <span className="group-meta">by {g.creator_name} · {g.member_count} members</span>
+                    </div>
+                  </div>
+                  {g.description && <p className="group-desc">{g.description}</p>}
+                  {g.stadium_name && <div className="stat" style={{ marginBottom: 12 }}><IconStadium /><span>{g.stadium_name}</span></div>}
+                  <div className="group-invite-actions">
+                    <button className="action-btn success" style={{ flex: 1 }} onClick={() => respondInvite(g.id, 'accept')}>
+                      <IconCheck /> Accept
+                    </button>
+                    <button className="action-btn danger" onClick={() => respondInvite(g.id, 'decline')}>
+                      <IconX />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {showCreate && <CreateGroupModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); loadGroups(); }} />}
+    </div>
+  );
+}
+
+function CreateGroupModal({ onClose, onCreated }) {
+  const [step, setStep] = useState(1); // 1=details, 2=invite friends
+  const [form, setForm] = useState({ name: '', description: '', match_day: '', match_start: '', match_end: '', max_players: '10' });
+  const [stadiums, setStadiums] = useState([]);
+  const [selectedStadium, setSelectedStadium] = useState('');
+  const [friends, setFriends] = useState([]);
+  const [selectedFriends, setSelectedFriends] = useState(new Set());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [createdGroupId, setCreatedGroupId] = useState(null);
+
+  useEffect(() => {
+    Promise.all([apiCall('/stadiums'), apiCall('/friends')])
+      .then(([s, f]) => { setStadiums(s); setFriends(f); })
+      .catch(() => {});
+  }, []);
+
+  const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const toggleFriend = (id) => {
+    setSelectedFriends(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const createGroup = async (e) => {
+    e.preventDefault(); setLoading(true); setError('');
+    try {
+      const g = await apiCall('/groups', 'POST', {
+        name: form.name, description: form.description || null,
+        stadium_id: selectedStadium || null,
+        match_day: form.match_day !== '' ? parseInt(form.match_day) : null,
+        match_start: form.match_start || null, match_end: form.match_end || null,
+        max_players: parseInt(form.max_players) || 10,
+      });
+      setCreatedGroupId(g.id);
+      if (friends.length > 0) { setStep(2); }
+      else { onCreated(); }
+    } catch (err) { setError(err.message); }
+    setLoading(false);
+  };
+
+  const sendInvites = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([...selectedFriends].map(fid =>
+        apiCall(`/groups/${createdGroupId}/invite`, 'POST', { userId: fid })
+      ));
+    } catch {}
+    setLoading(false);
+    onCreated();
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
+        <div className="modal-header">
+          <div>
+            <h2 className="modal-title">{step === 1 ? 'Create Group' : 'Invite Friends'}</h2>
+            {step === 2 && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>Select who to invite — you can always invite more later</p>}
+          </div>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+
+        {step === 1 && (
+          <form onSubmit={createGroup} className="modal-form">
+            <div className="field"><label>Group Name *</label><input name="name" value={form.name} onChange={handle} placeholder="Friday Night FC" required /></div>
+            <div className="field"><label>Description</label><textarea name="description" value={form.description} onChange={handle} placeholder="Tell your friends what this group is about..." rows={2} /></div>
+            <div className="field"><label>Stadium <span className="optional">(optional)</span></label>
+              <select value={selectedStadium} onChange={e => setSelectedStadium(e.target.value)}>
+                <option value="">No stadium selected</option>
+                {stadiums.map(s => <option key={s.id} value={s.id}>{s.name} — {[s.city, s.country].filter(Boolean).join(', ')}</option>)}
+              </select>
+            </div>
+            <div className="form-row">
+              <div className="field"><label>Match Day</label>
+                <select name="match_day" value={form.match_day} onChange={handle}>
+                  <option value="">Any day</option>
+                  {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+                </select>
+              </div>
+              <div className="field"><label>Max Players</label><input name="max_players" type="number" min="2" max="50" value={form.max_players} onChange={handle} /></div>
+            </div>
+            {form.match_day !== '' && (
+              <div className="form-row">
+                <div className="field"><label>Start Time</label><input name="match_start" type="time" value={form.match_start} onChange={handle} /></div>
+                <div className="field"><label>End Time</label><input name="match_end" type="time" value={form.match_end} onChange={handle} /></div>
+              </div>
+            )}
+            {error && <div className="error-msg">{error}</div>}
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+              <button type="submit" className="submit-btn" style={{ flex: 1 }} disabled={loading}>
+                {loading ? <span className="spinner" /> : friends.length > 0 ? 'Next: Invite Friends →' : 'Create Group'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 2 && (
+          <div className="modal-form">
+            <div className="friend-picker-list">
+              {friends.length === 0 && <div className="empty-state"><p>No friends to invite yet</p></div>}
+              {friends.map(f => (
+                <div
+                  key={f.id}
+                  className={`friend-picker-item ${selectedFriends.has(f.id) ? 'selected' : ''}`}
+                  onClick={() => toggleFriend(f.id)}
+                >
+                  <Avatar name={f.name} size={38} />
+                  <div className="player-info">
+                    <span className="player-name">{f.name}</span>
+                    {[f.city,f.country].filter(Boolean).join(', ') && <span className="player-meta"><IconMapPin /> {[f.city,f.country].filter(Boolean).join(', ')}</span>}
+                  </div>
+                  <div className={`friend-check ${selectedFriends.has(f.id) ? 'checked' : ''}`}>
+                    {selectedFriends.has(f.id) && <IconCheck />}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="modal-actions" style={{ marginTop: 16 }}>
+              <button className="btn-secondary" onClick={() => onCreated()}>Skip</button>
+              <button className="submit-btn" style={{ flex: 1 }} onClick={sendInvites} disabled={loading}>
+                {loading ? <span className="spinner" /> : selectedFriends.size > 0 ? `Invite ${selectedFriends.size} Friend${selectedFriends.size > 1 ? 's' : ''}` : 'Create Without Inviting'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GroupDetail({ group, user, onBack }) {
+  const [detail, setDetail] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMsg, setNewMsg] = useState('');
+  const [sending, setSending] = useState(false);
+  const [activeTab, setActiveTab] = useState('chat');
+  const [friends, setFriends] = useState([]);
+  const [inviting, setInviting] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const messagesEndRef = useRef(null);
+  const pollRef = useRef(null);
+
+  const loadDetail = useCallback(async () => {
+    try { setDetail(await apiCall(`/groups/${group.id}`)); } catch {}
+  }, [group.id]);
+
+  const loadMessages = useCallback(async () => {
+    try { setMessages(await apiCall(`/groups/${group.id}/messages`)); } catch {}
+  }, [group.id]);
+
+  useEffect(() => {
+    loadDetail();
+    loadMessages();
+    pollRef.current = setInterval(loadMessages, 3000);
+    return () => clearInterval(pollRef.current);
+  }, [loadDetail, loadMessages]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  useEffect(() => {
+    if (activeTab === 'members') {
+      apiCall('/friends').then(setFriends).catch(() => {});
+    }
+  }, [activeTab]);
+
+  const sendMessage = async (e) => {
+    e?.preventDefault();
+    if (!newMsg.trim() || sending) return;
+    setSending(true);
+    try {
+      const msg = await apiCall(`/groups/${group.id}/messages`, 'POST', { content: newMsg });
+      setMessages(prev => [...prev, { ...msg, sender_name: user.name }]);
+      setNewMsg('');
+    } catch {}
+    setSending(false);
+  };
+
+  const inviteFriend = async (friendId) => {
+    setInviting(friendId);
+    try { await apiCall(`/groups/${group.id}/invite`, 'POST', { userId: friendId }); }
+    catch {} setInviting(null);
+  };
+
+  const leaveGroup = async () => {
+    if (!window.confirm('Leave this group?')) return;
+    try { await apiCall(`/groups/${group.id}/leave`, 'DELETE'); onBack(); } catch {}
+  };
+
+  const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const isAdmin = detail?.members?.find(m => m.id === user.id)?.role === 'admin';
+  const memberIds = new Set(detail?.members?.map(m => m.id) || []);
+
+  // Use detail for live data, fall back to group prop
+  const currentGroup = detail || group;
+
+  return (
+    <div className="group-detail">
+      <div className="group-detail-header">
+        <button className="back-btn" onClick={onBack}><IconArrowLeft /></button>
+        <div className="group-avatar sm"><IconGroup /></div>
+        <div style={{ flex: 1 }}>
+          <h2 className="group-name">{currentGroup.name}</h2>
+          <span className="group-meta">{detail?.members?.length || 0} members</span>
+        </div>
+        {isAdmin && (
+          <button className="action-btn primary" style={{ fontSize: 12 }} onClick={() => setShowEdit(true)}>
+            <IconEdit /> Edit
+          </button>
+        )}
+        <button className="action-btn danger" style={{ fontSize: 12 }} onClick={leaveGroup}>Leave</button>
+      </div>
+
+      {(currentGroup.stadium_name || currentGroup.match_day !== null) && (
+        <div className="group-info-bar">
+          {currentGroup.stadium_name && <span><IconStadium /> {currentGroup.stadium_name}</span>}
+          {currentGroup.match_day !== null && <span><IconCalendar /> {DAYS[currentGroup.match_day]}{currentGroup.match_start ? ` · ${currentGroup.match_start?.slice(0,5)}` : ''}</span>}
+          {currentGroup.max_players && <span><IconUsers2 /> Max {currentGroup.max_players}</span>}
+        </div>
+      )}
+
+      <div className="sub-tabs" style={{ borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
+        <button className={`sub-tab ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><IconChat /> Chat</button>
+        <button className={`sub-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}><IconUsers /> Members</button>
+      </div>
+
+      {activeTab === 'chat' && (
+        <div className="group-chat-area">
+          <div className="messages-list">
+            {messages.length === 0 && <div className="chat-empty-hint">Be the first to say something! 👋</div>}
+            {messages.map((m, i) => {
+              const isMe = m.sender_id === user.id;
+              const showName = !isMe && (i === 0 || messages[i-1]?.sender_id !== m.sender_id);
+              return (
+                <div key={m.id} className={`message-row ${isMe ? 'me' : 'them'}`}>
+                  {!isMe && showName && <Avatar name={m.sender_name} size={28} />}
+                  {!isMe && !showName && <div style={{ width: 28 }} />}
+                  <div className="message-bubble">
+                    {showName && !isMe && <span className="bubble-sender">{m.sender_name}</span>}
+                    <p>{m.content}</p>
+                    <span className="message-time">{formatTime(m.created_at)}</span>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+          <form className="message-input-row" onSubmit={sendMessage}>
+            <input value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Message the group..." className="message-input" disabled={sending} />
+            <button type="submit" className="send-btn" disabled={!newMsg.trim() || sending}>
+              {sending ? <span className="spinner sm" /> : <IconSend />}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {activeTab === 'members' && (
+        <div className="tab-content">
+          <div className="player-list">
+            {(detail?.members || []).map(m => (
+              <div key={m.id} className="player-card">
+                <Avatar name={m.name} />
+                <div className="player-info">
+                  <span className="player-name">{m.name}{m.id === user.id ? ' (you)' : ''}</span>
+                  {[m.city,m.country].filter(Boolean).join(', ') && <span className="player-meta"><IconMapPin /> {[m.city,m.country].filter(Boolean).join(', ')}</span>}
+                </div>
+                {m.role === 'admin' && <span className="admin-badge"><IconShield /> Admin</span>}
+              </div>
+            ))}
+          </div>
+          {isAdmin && friends.filter(f => !memberIds.has(f.id)).length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <h3 className="section-label">Invite Friends</h3>
+              <div className="player-list">
+                {friends.filter(f => !memberIds.has(f.id)).map(f => (
+                  <div key={f.id} className="player-card">
+                    <Avatar name={f.name} />
+                    <div className="player-info">
+                      <span className="player-name">{f.name}</span>
+                      {[f.city,f.country].filter(Boolean).join(', ') && <span className="player-meta"><IconMapPin /> {[f.city,f.country].filter(Boolean).join(', ')}</span>}
+                    </div>
+                    <button className="action-btn primary" onClick={() => inviteFriend(f.id)} disabled={inviting === f.id}>
+                      {inviting === f.id ? <span className="spinner sm" /> : <><IconUserPlus /> Invite</>}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {showEdit && (
+        <EditGroupModal
+          group={currentGroup}
+          onClose={() => setShowEdit(false)}
+          onSaved={() => { setShowEdit(false); loadDetail(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  EDIT GROUP MODAL
+// ══════════════════════════════════════════════════════════════════
+function EditGroupModal({ group, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    name: group.name || '',
+    description: group.description || '',
+    match_day: group.match_day !== null && group.match_day !== undefined ? String(group.match_day) : '',
+    match_start: group.match_start?.slice(0,5) || '',
+    match_end: group.match_end?.slice(0,5) || '',
+    max_players: group.max_players || 10,
+  });
+  const [stadiums, setStadiums] = useState([]);
+  const [selectedStadium, setSelectedStadium] = useState(group.stadium_id ? String(group.stadium_id) : '');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    apiCall('/stadiums').then(setStadiums).catch(() => {});
+  }, []);
+
+  const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault(); setLoading(true); setError('');
+    try {
+      await apiCall(`/groups/${group.id}`, 'PUT', {
+        name: form.name,
+        description: form.description || null,
+        stadium_id: selectedStadium || null,
+        match_day: form.match_day !== '' ? parseInt(form.match_day) : null,
+        match_start: form.match_start || null,
+        match_end: form.match_end || null,
+        max_players: parseInt(form.max_players) || 10,
+      });
+      onSaved();
+    } catch (err) { setError(err.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">Edit Group</h2>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <form onSubmit={submit} className="modal-form">
+          <div className="field"><label>Group Name *</label><input name="name" value={form.name} onChange={handle} placeholder="Friday Night FC" required /></div>
+          <div className="field"><label>Description</label><textarea name="description" value={form.description} onChange={handle} placeholder="What's this group about?" rows={2} /></div>
+          <div className="field"><label>Stadium <span className="optional">(optional)</span></label>
+            <select value={selectedStadium} onChange={e => setSelectedStadium(e.target.value)}>
+              <option value="">No stadium selected</option>
+              {stadiums.map(s => <option key={s.id} value={s.id}>{s.name} — {[s.city, s.country].filter(Boolean).join(', ')}</option>)}
+            </select>
+          </div>
+          <div className="form-row">
+            <div className="field"><label>Match Day</label>
+              <select name="match_day" value={form.match_day} onChange={handle}>
+                <option value="">Any day</option>
+                {DAYS.map((d, i) => <option key={i} value={i}>{d}</option>)}
+              </select>
+            </div>
+            <div className="field"><label>Max Players</label>
+              <input name="max_players" type="number" min="2" max="50" value={form.max_players} onChange={handle} />
+            </div>
+          </div>
+          {form.match_day !== '' && (
+            <div className="form-row">
+              <div className="field"><label>Start Time</label><input name="match_start" type="time" value={form.match_start} onChange={handle} /></div>
+              <div className="field"><label>End Time</label><input name="match_end" type="time" value={form.match_end} onChange={handle} /></div>
+            </div>
+          )}
+          {error && <div className="error-msg">{error}</div>}
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="submit-btn" style={{ flex: 1 }} disabled={loading}>
+              {loading ? <span className="spinner" /> : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  DELETE ACCOUNT MODAL
+// ══════════════════════════════════════════════════════════════════
+function DeleteAccountModal({ onClose, onDeleted }) {
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleDelete = async () => {
+    if (confirm !== 'DELETE') { setError('Type DELETE to confirm'); return; }
+    setLoading(true); setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/auth/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+      localStorage.removeItem('token');
+      onDeleted();
+    } catch (err) { setError(err.message); setLoading(false); }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title" style={{ color: '#f87171' }}>Delete Account</h2>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <div className="modal-form">
+          <div className="delete-account-warning">
+            <p className="delete-warning-title">⚠️ This action is permanent and cannot be undone.</p>
+            <p className="delete-warning-body">Deleting your account will permanently remove:</p>
+            <ul className="delete-warning-list">
+              <li>Your profile and all personal data</li>
+              <li>All your bookings and messages</li>
+              <li>Your friend connections</li>
+              <li>Your group memberships and chats</li>
+              <li>All your stadiums and their schedules</li>
+            </ul>
+          </div>
+          <div className="field">
+            <label>Type <strong style={{ color: '#f87171', fontFamily: 'monospace' }}>DELETE</strong> to confirm</label>
+            <input
+              value={confirm}
+              onChange={e => { setConfirm(e.target.value); setError(''); }}
+              placeholder="DELETE"
+              style={{ borderColor: confirm === 'DELETE' ? 'rgba(248,113,113,0.5)' : undefined }}
+            />
+          </div>
+          {error && <div className="error-msg">{error}</div>}
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button
+              className="submit-btn"
+              style={{ flex: 1, background: confirm === 'DELETE' ? '#ef4444' : 'rgba(239,68,68,0.3)', color: '#fff' }}
+              onClick={handleDelete}
+              disabled={loading}
+            >
+              {loading ? <span className="spinner" style={{ borderTopColor: '#fff' }} /> : <><IconTrash /> Delete My Account</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomePage({ user, onLogout }) {
   const isOwner = user.userType==="stadium_owner";
   const [page, setPage] = useState("home");
+  const [chatPartner, setChatPartner] = useState(null);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const notifRef = useRef(null);
+
+  const openChat = (partner) => {
+    setChatPartner(partner);
+    setPage("chat");
+  };
+
+  // Poll unread count
+  useEffect(() => {
+    const fetchCount = async () => {
+      try { const d = await apiCall('/notifications/unread-count'); setUnreadNotifs(d.count); } catch {}
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Close notif panel on outside click
+  useEffect(() => {
+    const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
     <div className="home-root">
@@ -958,31 +2042,55 @@ function HomePage({ user, onLogout }) {
           <button className={`nav-link ${page==="stadiums"?"active":""}`} onClick={()=>setPage("stadiums")}><IconStadium/><span>{isOwner?"My Stadiums":"Stadiums"}</span></button>
           {!isOwner&&<button className={`nav-link ${page==="bookings"?"active":""}`} onClick={()=>setPage("bookings")}><IconBookmark/><span>My Bookings</span></button>}
           {!isOwner&&<button className={`nav-link ${page==="players"?"active":""}`} onClick={()=>setPage("players")}><IconUsers/><span>Players</span></button>}
+          <button className={`nav-link ${page==="chat"?"active":""}`} onClick={()=>{ setChatPartner(null); setPage("chat"); }}><IconChat/><span>Chat</span></button>
+          {!isOwner&&<button className={`nav-link ${page==="groups"?"active":""}`} onClick={()=>setPage("groups")}><IconGroup/><span>Groups</span></button>}
         </div>
-        <button className="logout-btn" onClick={onLogout}><IconLogout/> Sign out</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ position: 'relative' }} ref={notifRef}>
+            <button className={`nav-notif-btn ${showNotifs ? 'active' : ''}`} onClick={() => setShowNotifs(!showNotifs)}>
+              <IconBell filled={unreadNotifs > 0} />
+              {unreadNotifs > 0 && <span className="notif-badge">{unreadNotifs > 99 ? '99+' : unreadNotifs}</span>}
+            </button>
+            {showNotifs && (
+              <NotificationsPanel
+                onClose={() => setShowNotifs(false)}
+                onUnreadChange={setUnreadNotifs}
+              />
+            )}
+          </div>
+          <button className="logout-btn" onClick={onLogout}><IconLogout /> Sign out</button>
+        </div>
       </nav>
       {page==="home"&&(
         <div className="home-content">
           <div className="welcome-card">
             <div className={`user-badge ${isOwner?"owner":"player"}`}>{isOwner?<IconStadium/>:<IconBall/>}<span>{isOwner?"Stadium Owner":"Player"}</span></div>
             <h1 className="welcome-title">Hello, <span className="name-highlight">{user.name}</span> 👋</h1>
-            <p className="welcome-sub">{isOwner?"Manage your stadiums, set schedules, and handle bookings.":"Browse stadiums, filter by day & time, and book your next match."}</p>
+            <p className="welcome-sub">{isOwner?"Manage your stadiums, set schedules, and handle bookings.":"Browse stadiums, chat with friends, and organize your next match."}</p>
             <div className="info-chips">
               <div className="chip"><span className="chip-label">Account Type</span><span className="chip-value">{isOwner?"Stadium Owner":"Player"}</span></div>
               <div className="chip"><span className="chip-label">Email</span><span className="chip-value">{user.email}</span></div>
-              {user.location&&<div className="chip"><span className="chip-label">Location</span><span className="chip-value">{user.location}</span></div>}
+              {user.city&&<div className="chip"><span className="chip-label">City</span><span className="chip-value">{user.city}</span></div>}{user.country&&<div className="chip"><span className="chip-label">Country</span><span className="chip-value">{user.country}</span></div>}
             </div>
             <div className="home-quick-actions">
               <button className="cta-btn" onClick={()=>setPage("stadiums")}><IconStadium/>{isOwner?"Manage Stadiums":"Browse Stadiums"}</button>
-              {!isOwner&&<button className="cta-btn secondary" onClick={()=>setPage("bookings")}><IconBookmark/> My Bookings</button>}
+              {!isOwner&&<button className="cta-btn secondary" onClick={()=>setPage("groups")}><IconGroup/> My Groups</button>}
+              {!isOwner&&<button className="cta-btn secondary" onClick={()=>setPage("chat")}><IconChat/> Messages</button>}
             </div>
-            <div className="coming-soon"><div className="cs-dot"/><span>Match creation & chat coming soon!</span></div>
+            <div className="danger-zone">
+              <button className="delete-account-btn" onClick={()=>setShowDeleteAccount(true)}>
+                <IconTrash /> Delete My Account
+              </button>
+            </div>
           </div>
         </div>
       )}
-      {page==="stadiums"&&<div className="page-content">{isOwner?<OwnerStadiumsPage/>:<BrowseStadiumsPage/>}</div>}
+      {page==="stadiums"&&<div className="page-content">{isOwner?<OwnerStadiumsPage/>:<BrowseStadiumsPage onMessageOwner={openChat}/>}</div>}
       {page==="bookings"&&!isOwner&&<div className="page-content"><MyBookingsPage/></div>}
       {page==="players"&&!isOwner&&<div className="page-content"><div className="page-header"><h2 className="page-title">Players</h2><p className="page-sub">Search and connect with other players</p></div><PlayersPage user={user}/></div>}
+      {page==="chat"&&<div className="page-content"><ChatPage user={user} initialPartner={chatPartner}/></div>}
+      {page==="groups"&&!isOwner&&<div className="page-content"><GroupsPage user={user}/></div>}
+      {showDeleteAccount&&<DeleteAccountModal onClose={()=>setShowDeleteAccount(false)} onDeleted={onLogout}/>}
     </div>
   );
 }

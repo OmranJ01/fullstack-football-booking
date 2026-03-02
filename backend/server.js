@@ -38,7 +38,7 @@ function fromMin(m) {
 // ══════════════════════════════════════════════════════════════════
 
 app.post('/api/auth/signup', async (req, res) => {
-  const { name, email, password, userType, location } = req.body;
+  const { name, email, password, userType, city, country } = req.body;
   if (!name || !email || !password || !userType)
     return res.status(400).json({ error: 'All fields are required' });
   if (!['player', 'stadium_owner'].includes(userType))
@@ -48,8 +48,8 @@ app.post('/api/auth/signup', async (req, res) => {
     if (existing.rows.length) return res.status(409).json({ error: 'Email already registered' });
     const hash = await bcrypt.hash(password, 10);
     const r = await pool.query(
-      'INSERT INTO users (name,email,password,user_type,location) VALUES ($1,$2,$3,$4,$5) RETURNING id,name,email,user_type',
-      [name, email, hash, userType, location || null]
+      'INSERT INTO users (name,email,password,user_type,city,country) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id,name,email,user_type',
+      [name, email, hash, userType, city || null, country || null]
     );
     const u = r.rows[0];
     const token = jwt.sign({ id: u.id, userType: u.user_type }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -72,12 +72,48 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
-    const r = await pool.query('SELECT id,name,email,user_type,location FROM users WHERE id=$1', [req.user.id]);
+    const r = await pool.query('SELECT id,name,email,user_type,city,country FROM users WHERE id=$1', [req.user.id]);
     const u = r.rows[0];
     if (!u) return res.status(404).json({ error: 'User not found' });
-    res.json({ id: u.id, name: u.name, email: u.email, userType: u.user_type, location: u.location });
+    res.json({ id: u.id, name: u.name, email: u.email, userType: u.user_type, city: u.city, country: u.country });
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
+
+// Delete own account — handles all cascades explicitly
+app.delete('/api/auth/delete-account', authenticate, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const userId = req.user.id;
+
+    // If stadium owner: cancel all bookings for their stadiums (so players' bookings disappear),
+    // then nullify stadium_id in groups (keep groups, just unlink the stadium)
+    if (req.user.userType === 'stadium_owner') {
+      // Cancel all bookings for owner's stadiums
+      await client.query(
+        `UPDATE bookings SET status='cancelled' WHERE stadium_id IN (SELECT id FROM stadiums WHERE owner_id=$1)`,
+        [userId]
+      );
+      // Unlink stadiums from groups (keep groups, just remove the stadium reference)
+      await client.query(
+        `UPDATE groups SET stadium_id=NULL WHERE stadium_id IN (SELECT id FROM stadiums WHERE owner_id=$1)`,
+        [userId]
+      );
+    }
+
+    // Delete the user — FK cascades handle the rest:
+    // friendships, messages (sender/receiver), group_members, group_messages, bookings (player_id), stadiums+schedule (owner)
+    await client.query('DELETE FROM users WHERE id=$1', [userId]);
+
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  } finally { client.release(); }
+});
+
 
 // ══════════════════════════════════════════════════════════════════
 //  FRIENDS
@@ -85,19 +121,35 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
 
 app.get('/api/players/search', authenticate, async (req, res) => {
   const q = (req.query.q || '').trim();
-  if (!q) return res.json([]);
+  const city = (req.query.city || '').trim();
+  const country = (req.query.country || '').trim();
+  const day = req.query.day !== undefined && req.query.day !== '' ? parseInt(req.query.day) : null;
   const myId = parseInt(req.user.id, 10);
   try {
-    const r = await pool.query(
-      `SELECT u.id, u.name, u.location,
-         f.status AS friendship_status, f.requester_id AS friendship_requester
-       FROM users u
-       LEFT JOIN friendships f
-         ON (f.requester_id=u.id AND f.addressee_id=$2) OR (f.addressee_id=u.id AND f.requester_id=$2)
-       WHERE u.user_type='player' AND u.id<>$2 AND (u.name ILIKE $1 OR u.location ILIKE $1)
-       ORDER BY u.name LIMIT 20`,
-      [`%${q}%`, myId]
-    );
+    let baseWhere = `u.user_type='player' AND u.id<>$1`;
+    const params = [myId];
+    let idx = 2;
+
+    if (q) { baseWhere += ` AND (u.name ILIKE $${idx} OR u.city ILIKE $${idx} OR u.country ILIKE $${idx})`; params.push(`%${q}%`); idx++; }
+    if (city) { baseWhere += ` AND u.city ILIKE $${idx}`; params.push(`%${city}%`); idx++; }
+    if (country) { baseWhere += ` AND u.country ILIKE $${idx}`; params.push(`%${country}%`); idx++; }
+
+    let joinClause = '';
+    if (day !== null) {
+      joinClause = `JOIN player_availability pa ON pa.player_id=u.id AND pa.day_of_week=$${idx}`;
+      params.push(day); idx++;
+    }
+
+    const sql = `
+      SELECT DISTINCT u.id, u.name, u.city, u.country,
+        f.status AS friendship_status, f.requester_id AS friendship_requester
+      FROM users u
+      LEFT JOIN friendships f
+        ON (f.requester_id=u.id AND f.addressee_id=$1) OR (f.addressee_id=u.id AND f.requester_id=$1)
+      ${joinClause}
+      WHERE ${baseWhere}
+      ORDER BY u.name LIMIT 30`;
+    const r = await pool.query(sql, params);
     res.json(r.rows);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -145,7 +197,7 @@ app.delete('/api/friends/:otherId', authenticate, async (req, res) => {
 app.get('/api/friends', authenticate, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT u.id,u.name,u.location,f.created_at AS friends_since
+      `SELECT u.id,u.name,u.city,u.country,f.created_at AS friends_since
        FROM friendships f
        JOIN users u ON (CASE WHEN f.requester_id=$1 THEN f.addressee_id ELSE f.requester_id END=u.id)
        WHERE (f.requester_id=$1 OR f.addressee_id=$1) AND f.status='accepted' ORDER BY u.name`,
@@ -158,7 +210,7 @@ app.get('/api/friends', authenticate, async (req, res) => {
 app.get('/api/friends/requests/incoming', authenticate, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT u.id,u.name,u.location,f.created_at AS requested_at
+      `SELECT u.id,u.name,u.city,u.country,f.created_at AS requested_at
        FROM friendships f JOIN users u ON f.requester_id=u.id
        WHERE f.addressee_id=$1 AND f.status='pending' ORDER BY f.created_at DESC`,
       [req.user.id]
@@ -170,7 +222,7 @@ app.get('/api/friends/requests/incoming', authenticate, async (req, res) => {
 app.get('/api/friends/requests/outgoing', authenticate, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT u.id,u.name,u.location,f.created_at AS requested_at
+      `SELECT u.id,u.name,u.city,u.country,f.created_at AS requested_at
        FROM friendships f JOIN users u ON f.addressee_id=u.id
        WHERE f.requester_id=$1 AND f.status='pending' ORDER BY f.created_at DESC`,
       [req.user.id]
@@ -191,13 +243,13 @@ app.get('/api/stadiums/mine', authenticate, requireOwner, async (req, res) => {
 });
 
 app.post('/api/stadiums', authenticate, requireOwner, async (req, res) => {
-  const { name, location, description, price_per_hour, capacity, surface, phone, open_time, close_time } = req.body;
-  if (!name || !location || !price_per_hour) return res.status(400).json({ error: 'Name, location and price are required' });
+  const { name, city, country, description, price_per_hour, capacity, surface, phone, open_time, close_time } = req.body;
+  if (!name || !city || !price_per_hour) return res.status(400).json({ error: 'Name, city and price are required' });
   try {
     const r = await pool.query(
-      `INSERT INTO stadiums (owner_id,name,location,description,price_per_hour,capacity,surface,phone,open_time,close_time)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [req.user.id, name, location, description || null, price_per_hour, capacity || null,
+      `INSERT INTO stadiums (owner_id,name,city,country,description,price_per_hour,capacity,surface,phone,open_time,close_time)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [req.user.id, name, city, country || null, description || null, price_per_hour, capacity || null,
        surface || 'grass', phone || null, open_time || '08:00', close_time || '22:00']
     );
     res.status(201).json(r.rows[0]);
@@ -205,15 +257,15 @@ app.post('/api/stadiums', authenticate, requireOwner, async (req, res) => {
 });
 
 app.put('/api/stadiums/:id', authenticate, requireOwner, async (req, res) => {
-  const { name, location, description, price_per_hour, capacity, surface, phone, open_time, close_time, is_active } = req.body;
+  const { name, city, country, description, price_per_hour, capacity, surface, phone, open_time, close_time, is_active } = req.body;
   try {
     const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
     if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
     const r = await pool.query(
-      `UPDATE stadiums SET name=$1,location=$2,description=$3,price_per_hour=$4,capacity=$5,surface=$6,
-         phone=$7,open_time=$8,close_time=$9,is_active=$10,updated_at=NOW()
-       WHERE id=$11 AND owner_id=$12 RETURNING *`,
-      [name, location, description || null, price_per_hour, capacity || null, surface || 'grass',
+      `UPDATE stadiums SET name=$1,city=$2,country=$3,description=$4,price_per_hour=$5,capacity=$6,surface=$7,
+         phone=$8,open_time=$9,close_time=$10,is_active=$11,updated_at=NOW()
+       WHERE id=$12 AND owner_id=$13 RETURNING *`,
+      [name, city, country || null, description || null, price_per_hour, capacity || null, surface || 'grass',
        phone || null, open_time || '08:00', close_time || '22:00',
        is_active !== undefined ? is_active : true, req.params.id, req.user.id]
     );
@@ -240,44 +292,33 @@ app.patch('/api/stadiums/:id/toggle', authenticate, requireOwner, async (req, re
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
-// Browse stadiums (players) — filter by location, day, time range
+// Browse stadiums (players) — filter by name, city, country, day, time range
 app.get('/api/stadiums', authenticate, async (req, res) => {
   const q = (req.query.q || '').trim();
+  const city = (req.query.city || '').trim();
+  const country = (req.query.country || '').trim();
   const day = req.query.day !== undefined && req.query.day !== '' ? parseInt(req.query.day) : null;
   const slotStart = req.query.slot_start || null;
   const slotEnd = req.query.slot_end || null;
   try {
-    let query, params;
-    if (day !== null && slotStart && slotEnd) {
-      query = `
-        SELECT DISTINCT s.*, u.name AS owner_name
-        FROM stadiums s JOIN users u ON s.owner_id=u.id
-        JOIN stadium_schedule ss ON ss.stadium_id=s.id
-        WHERE s.is_active=TRUE AND ss.day_of_week=$3
-          AND ss.slot_start <= $4::time AND ss.slot_end >= $5::time
-          AND ss.is_available=TRUE
-          AND ($1='' OR s.name ILIKE $2 OR s.location ILIKE $2)
-        ORDER BY s.name`;
-      params = [q, `%${q}%`, day, slotStart, slotEnd];
-    } else if (day !== null) {
-      query = `
-        SELECT DISTINCT s.*, u.name AS owner_name
-        FROM stadiums s JOIN users u ON s.owner_id=u.id
-        JOIN stadium_schedule ss ON ss.stadium_id=s.id
-        WHERE s.is_active=TRUE AND ss.day_of_week=$3 AND ss.is_available=TRUE
-          AND ($1='' OR s.name ILIKE $2 OR s.location ILIKE $2)
-        ORDER BY s.name`;
-      params = [q, `%${q}%`, day];
-    } else {
-      query = `
-        SELECT s.*, u.name AS owner_name
-        FROM stadiums s JOIN users u ON s.owner_id=u.id
-        WHERE s.is_active=TRUE
-          AND ($1='' OR s.name ILIKE $2 OR s.location ILIKE $2)
-        ORDER BY s.created_at DESC LIMIT 50`;
-      params = [q, `%${q}%`];
+    const conditions = ['s.is_active=TRUE'];
+    const params = [];
+    let idx = 1;
+    if (q) { conditions.push(`(s.name ILIKE $${idx} OR s.city ILIKE $${idx} OR s.country ILIKE $${idx})`); params.push(`%${q}%`); idx++; }
+    if (city) { conditions.push(`s.city ILIKE $${idx}`); params.push(`%${city}%`); idx++; }
+    if (country) { conditions.push(`s.country ILIKE $${idx}`); params.push(`%${country}%`); idx++; }
+    let joinClause = '';
+    if (day !== null) {
+      joinClause = `JOIN stadium_schedule ss ON ss.stadium_id=s.id AND ss.day_of_week=$${idx} AND ss.is_available=TRUE`;
+      params.push(day); idx++;
+      if (slotStart && slotEnd) {
+        joinClause += ` AND ss.slot_start<=$${idx}::time AND ss.slot_end>=$${idx+1}::time`;
+        params.push(slotStart, slotEnd); idx += 2;
+      }
     }
-    const r = await pool.query(query, params);
+    const where = conditions.join(' AND ');
+    const sql = `SELECT DISTINCT s.*, u.name AS owner_name FROM stadiums s JOIN users u ON s.owner_id=u.id ${joinClause} WHERE ${where} ORDER BY s.created_at DESC LIMIT 50`;
+    const r = await pool.query(sql, params);
     res.json(r.rows);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -400,7 +441,29 @@ app.post('/api/bookings', authenticate, async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
       [stadium_id, req.user.id, day_of_week, booked_start, booked_end, parentSlot.id, note || null]
     );
-    res.status(201).json(r.rows[0]);
+    const booking = r.rows[0];
+
+    // Notify the stadium owner
+    try {
+      const infoRes = await pool.query(
+        `SELECT u.name AS player_name, s.name AS stadium_name, s.owner_id
+         FROM users u, stadiums s WHERE u.id=$1 AND s.id=$2`,
+        [req.user.id, stadium_id]
+      );
+      if (infoRes.rows.length) {
+        const { player_name, stadium_name, owner_id } = infoRes.rows[0];
+        const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][day_of_week];
+        await pool.query(
+          `INSERT INTO notifications (user_id, type, message, related_id, related_type)
+           VALUES ($1, 'booking', $2, $3, 'booking')`,
+          [owner_id,
+           `📅 ${player_name} requested a booking at ${stadium_name} on ${dayName} (${String(booked_start).slice(0,5)}–${String(booked_end).slice(0,5)})`,
+           booking.id]
+        );
+      }
+    } catch (notifErr) { console.error('Notification error:', notifErr); }
+
+    res.status(201).json(booking);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -408,7 +471,7 @@ app.post('/api/bookings', authenticate, async (req, res) => {
 app.get('/api/bookings/mine', authenticate, async (req, res) => {
   try {
     const r = await pool.query(
-      `SELECT b.*, s.name AS stadium_name, s.location AS stadium_location,
+      `SELECT b.*, s.name AS stadium_name, s.city AS stadium_city, s.country AS stadium_country,
               s.price_per_hour, s.phone AS stadium_phone
        FROM bookings b JOIN stadiums s ON b.stadium_id=s.id
        WHERE b.player_id=$1 ORDER BY b.day_of_week, b.booked_start`,
@@ -633,3 +696,385 @@ async function restoreSlot(client, booking) {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// ══════════════════════════════════════════════════════════════════
+//  PLAYER AVAILABILITY
+// ══════════════════════════════════════════════════════════════════
+
+// Get my availability
+app.get('/api/players/availability', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT * FROM player_availability WHERE player_id=$1 ORDER BY day_of_week, slot_start',
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Save availability for a day (replace all slots for that day)
+app.put('/api/players/availability/:day', authenticate, async (req, res) => {
+  const day = parseInt(req.params.day);
+  if (isNaN(day) || day < 0 || day > 6) return res.status(400).json({ error: 'Invalid day' });
+  const { slots } = req.body; // array of { slot_start, slot_end }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM player_availability WHERE player_id=$1 AND day_of_week=$2', [req.user.id, day]);
+    if (slots && slots.length) {
+      for (const s of slots) {
+        await client.query(
+          'INSERT INTO player_availability (player_id,day_of_week,slot_start,slot_end) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
+          [req.user.id, day, s.slot_start, s.slot_end]
+        );
+      }
+    }
+    await client.query('COMMIT');
+    const r = await client.query('SELECT * FROM player_availability WHERE player_id=$1 ORDER BY day_of_week,slot_start', [req.user.id]);
+    res.json(r.rows);
+  } catch (err) { await client.query('ROLLBACK'); console.error(err); res.status(500).json({ error: 'Server error' }); }
+  finally { client.release(); }
+});
+
+// Get a specific player's availability (for viewing profile)
+app.get('/api/players/:id/availability', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT day_of_week, slot_start, slot_end FROM player_availability WHERE player_id=$1 ORDER BY day_of_week, slot_start',
+      [req.params.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════════
+
+// Helper: create a notification
+async function createNotification(client, userId, type, message, relatedId = null, relatedType = null) {
+  await client.query(
+    `INSERT INTO notifications (user_id, type, message, related_id, related_type)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, type, message, relatedId, relatedType]
+  );
+}
+
+app.get('/api/notifications', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50`,
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.get('/api/notifications/unread-count', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT COUNT(*)::int AS count FROM notifications WHERE user_id=$1 AND is_read=FALSE`,
+      [req.user.id]
+    );
+    res.json({ count: r.rows[0].count });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.patch('/api/notifications/read-all', authenticate, async (req, res) => {
+  try {
+    await pool.query(`UPDATE notifications SET is_read=TRUE WHERE user_id=$1`, [req.user.id]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+app.patch('/api/notifications/:id/read', authenticate, async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  DIRECT MESSAGES (Chat)
+// ══════════════════════════════════════════════════════════════════
+
+// Get all conversations for current user (list of unique partners)
+app.get('/api/messages/conversations', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT DISTINCT ON (partner_id)
+         partner_id, partner_name, partner_city, partner_country,
+         last_message, last_message_at, unread_count
+       FROM (
+         SELECT
+           CASE WHEN m.sender_id=$1 THEN m.receiver_id ELSE m.sender_id END AS partner_id,
+           u.name AS partner_name, u.city AS partner_city, u.country AS partner_country,
+           m.content AS last_message, m.created_at AS last_message_at,
+           (SELECT COUNT(*) FROM messages m2
+            WHERE m2.sender_id=CASE WHEN m.sender_id=$1 THEN m.receiver_id ELSE m.sender_id END
+              AND m2.receiver_id=$1 AND m2.is_read=FALSE) AS unread_count
+         FROM messages m
+         JOIN users u ON u.id=CASE WHEN m.sender_id=$1 THEN m.receiver_id ELSE m.sender_id END
+         WHERE m.sender_id=$1 OR m.receiver_id=$1
+         ORDER BY m.created_at DESC
+       ) t
+       ORDER BY partner_id, last_message_at DESC`,
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Get messages with a specific user
+app.get('/api/messages/:partnerId', authenticate, async (req, res) => {
+  try {
+    // Mark as read
+    await pool.query(
+      `UPDATE messages SET is_read=TRUE WHERE sender_id=$1 AND receiver_id=$2 AND is_read=FALSE`,
+      [req.params.partnerId, req.user.id]
+    );
+    const r = await pool.query(
+      `SELECT m.*, u.name AS sender_name FROM messages m
+       JOIN users u ON m.sender_id=u.id
+       WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1)
+       ORDER BY m.created_at ASC LIMIT 200`,
+      [req.user.id, req.params.partnerId]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Send a message
+app.post('/api/messages', authenticate, async (req, res) => {
+  const { receiverId, content } = req.body;
+  if (!receiverId || !content?.trim()) return res.status(400).json({ error: 'receiverId and content required' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await client.query(
+      `INSERT INTO messages (sender_id, receiver_id, content) VALUES ($1,$2,$3) RETURNING *`,
+      [req.user.id, receiverId, content.trim()]
+    );
+    // Notify receiver
+    const senderRes = await client.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    await createNotification(client, receiverId, 'message', `${senderRes.rows[0].name} sent you a message`, req.user.id, 'user');
+    await client.query('COMMIT');
+    res.status(201).json(r.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err); res.status(500).json({ error: 'Server error' });
+  } finally { client.release(); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  GROUPS / MATCHES
+// ══════════════════════════════════════════════════════════════════
+
+// Create a group/match
+app.post('/api/groups', authenticate, async (req, res) => {
+  const { name, description, stadium_id, match_day, match_start, match_end, max_players } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await client.query(
+      `INSERT INTO groups (name, description, creator_id, stadium_id, match_day, match_start, match_end, max_players)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [name, description||null, req.user.id, stadium_id||null, match_day||null, match_start||null, match_end||null, max_players||10]
+    );
+    const group = r.rows[0];
+    // Creator auto-joins as admin
+    await client.query(
+      `INSERT INTO group_members (group_id, user_id, role) VALUES ($1,$2,'admin')`,
+      [group.id, req.user.id]
+    );
+    await client.query('COMMIT');
+    res.status(201).json(group);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err); res.status(500).json({ error: 'Server error' });
+  } finally { client.release(); }
+});
+
+// Get my groups
+app.get('/api/groups/mine', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT g.*, u.name AS creator_name,
+              s.name AS stadium_name, s.city AS stadium_city, s.country AS stadium_country,
+              gm.role AS my_role,
+              (SELECT COUNT(*) FROM group_members gm2 WHERE gm2.group_id=g.id AND gm2.status='active')::int AS member_count,
+              (SELECT COUNT(*) FROM group_messages gm3 WHERE gm3.group_id=g.id AND gm3.created_at > COALESCE(gm.last_read_at, '1970-01-01'))::int AS unread_count
+       FROM groups g
+       JOIN group_members gm ON gm.group_id=g.id AND gm.user_id=$1 AND gm.status='active'
+       JOIN users u ON g.creator_id=u.id
+       LEFT JOIN stadiums s ON g.stadium_id=s.id
+       ORDER BY g.created_at DESC`,
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Get group details with members
+app.get('/api/groups/:id', authenticate, async (req, res) => {
+  try {
+    const g = await pool.query(
+      `SELECT g.*, u.name AS creator_name, s.name AS stadium_name, s.city AS stadium_city, s.country AS stadium_country
+       FROM groups g JOIN users u ON g.creator_id=u.id LEFT JOIN stadiums s ON g.stadium_id=s.id
+       WHERE g.id=$1`, [req.params.id]
+    );
+    if (!g.rows.length) return res.status(404).json({ error: 'Group not found' });
+    const members = await pool.query(
+      `SELECT u.id, u.name, u.city, u.country, gm.role, gm.joined_at
+       FROM group_members gm JOIN users u ON gm.user_id=u.id
+       WHERE gm.group_id=$1 AND gm.status='active' ORDER BY gm.joined_at`,
+      [req.params.id]
+    );
+    res.json({ ...g.rows[0], members: members.rows });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Invite a friend to group
+app.post('/api/groups/:id/invite', authenticate, async (req, res) => {
+  const { userId } = req.body;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Check admin
+    const admin = await client.query(
+      `SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2 AND role='admin' AND status='active'`,
+      [req.params.id, req.user.id]
+    );
+    if (!admin.rows.length) return res.status(403).json({ error: 'Only admins can invite' });
+    // Add member as pending
+    await client.query(
+      `INSERT INTO group_members (group_id, user_id, status) VALUES ($1,$2,'invited')
+       ON CONFLICT (group_id, user_id) DO UPDATE SET status='invited'`,
+      [req.params.id, userId]
+    );
+    const groupRes = await client.query('SELECT name FROM groups WHERE id=$1', [req.params.id]);
+    const inviterRes = await client.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    await createNotification(client, userId, 'group_invite',
+      `${inviterRes.rows[0].name} invited you to join "${groupRes.rows[0].name}"`,
+      parseInt(req.params.id), 'group'
+    );
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err); res.status(500).json({ error: 'Server error' });
+  } finally { client.release(); }
+});
+
+// Accept/decline group invite
+app.patch('/api/groups/:id/respond', authenticate, async (req, res) => {
+  const { action } = req.body; // 'accept' or 'decline'
+  try {
+    if (action === 'accept') {
+      await pool.query(
+        `UPDATE group_members SET status='active', joined_at=NOW() WHERE group_id=$1 AND user_id=$2 AND status='invited'`,
+        [req.params.id, req.user.id]
+      );
+    } else {
+      await pool.query(
+        `DELETE FROM group_members WHERE group_id=$1 AND user_id=$2 AND status='invited'`,
+        [req.params.id, req.user.id]
+      );
+    }
+    res.json({ success: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Leave group
+// Edit group (admin only)
+app.put('/api/groups/:id', authenticate, async (req, res) => {
+  const { name, description, stadium_id, match_day, match_start, match_end, max_players } = req.body;
+  if (!name) return res.status(400).json({ error: 'name is required' });
+  try {
+    // Check admin
+    const admin = await pool.query(
+      `SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2 AND role='admin' AND status='active'`,
+      [req.params.id, req.user.id]
+    );
+    if (!admin.rows.length) return res.status(403).json({ error: 'Only admins can edit the group' });
+    const r = await pool.query(
+      `UPDATE groups SET name=$1, description=$2, stadium_id=$3, match_day=$4, match_start=$5, match_end=$6, max_players=$7
+       WHERE id=$8 RETURNING *`,
+      [name, description || null, stadium_id || null, match_day !== undefined ? match_day : null,
+       match_start || null, match_end || null, max_players || 10, req.params.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Group not found' });
+    res.json(r.rows[0]);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.delete('/api/groups/:id/leave', authenticate, async (req, res) => {
+  try {
+    await pool.query(
+      `UPDATE group_members SET status='left' WHERE group_id=$1 AND user_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// Get pending group invites for current user
+app.get('/api/groups/invites/pending', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT g.*, u.name AS creator_name,
+              s.name AS stadium_name,
+              (SELECT COUNT(*) FROM group_members gm2 WHERE gm2.group_id=g.id AND gm2.status='active')::int AS member_count
+       FROM group_members gm
+       JOIN groups g ON gm.group_id=g.id
+       JOIN users u ON g.creator_id=u.id
+       LEFT JOIN stadiums s ON g.stadium_id=s.id
+       WHERE gm.user_id=$1 AND gm.status='invited'
+       ORDER BY g.created_at DESC`,
+      [req.user.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── Group Chat ─────────────────────────────────────────────────────
+
+app.get('/api/groups/:id/messages', authenticate, async (req, res) => {
+  try {
+    // Mark as read
+    await pool.query(
+      `UPDATE group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2`,
+      [req.params.id, req.user.id]
+    );
+    const r = await pool.query(
+      `SELECT gm.*, u.name AS sender_name FROM group_messages gm
+       JOIN users u ON gm.sender_id=u.id
+       WHERE gm.group_id=$1 ORDER BY gm.created_at ASC LIMIT 200`,
+      [req.params.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+app.post('/api/groups/:id/messages', authenticate, async (req, res) => {
+  const { content } = req.body;
+  if (!content?.trim()) return res.status(400).json({ error: 'content required' });
+  try {
+    // Check membership
+    const mem = await pool.query(
+      `SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2 AND status='active'`,
+      [req.params.id, req.user.id]
+    );
+    if (!mem.rows.length) return res.status(403).json({ error: 'Not a member' });
+    const r = await pool.query(
+      `INSERT INTO group_messages (group_id, sender_id, content) VALUES ($1,$2,$3) RETURNING *`,
+      [req.params.id, req.user.id, content.trim()]
+    );
+    res.status(201).json(r.rows[0]);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
