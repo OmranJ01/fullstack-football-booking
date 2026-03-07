@@ -79,6 +79,7 @@ function validStartTimes(freeWindows) {
 const IconBall = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 6.7 17.2M12 2a10 10 0 0 0-6.7 17.2M12 22V12M5.3 7l6.7 5 6.7-5"/></svg>);
 const IconStadium = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M12 12v5M9 12v5M15 12v5"/></svg>);
 const IconLogout = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>);
+const IconSettings = () => (<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>);
 const IconEye = ({ open }) => open ? (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>) : (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>);
 const IconUsers = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>);
 const IconHome = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="20" height="20"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>);
@@ -108,10 +109,138 @@ const IconBookmark = () => (<svg viewBox="0 0 24 24" fill="none" stroke="current
 const IconArrow = () => (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" width="14" height="14"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12,5 19,12 12,19"/></svg>);
 
 // ── Avatar ────────────────────────────────────────────────────────
-function Avatar({ name, size = 38 }) {
+function Avatar({ name, size = 38, src, onClick, editable }) {
   const initials = name ? name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase() : "?";
   const hue = name ? name.charCodeAt(0)*17%360 : 120;
-  return <div className="avatar" style={{width:size,height:size,minWidth:size,background:`hsl(${hue},45%,22%)`,border:`1.5px solid hsl(${hue},45%,32%)`,fontSize:size*0.36,color:`hsl(${hue},70%,72%)`}}>{initials}</div>;
+  return (
+    <div
+      className={`avatar${editable ? ' avatar-editable' : ''}`}
+      style={{width:size,height:size,minWidth:size,background:src?'transparent':
+        `hsl(${hue},45%,22%)`,border:`1.5px solid ${src?'rgba(61,220,104,0.35)':`hsl(${hue},45%,32%)`}`,fontSize:size*0.36,
+        color:`hsl(${hue},70%,72%)`, overflow:'hidden', cursor: editable ? 'pointer' : 'default', position:'relative',
+        borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0}}
+      onClick={onClick}
+    >
+      {src
+        ? <img src={src} alt={name} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+        : initials
+      }
+      {editable && (
+        <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',
+          justifyContent:'center',opacity:0,transition:'opacity 0.2s'}}
+          className="avatar-overlay">
+          <svg width={size*0.32} height={size*0.32} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Image Picker — reusable upload widget ─────────────────────────
+function ImagePicker({ value, onChange, round = false, width = 120, height = 120, label = "Upload Image" }) {
+  const ref = useRef();
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { alert('Image too large (max 8MB)'); return; }
+    // Resize + compress before storing (max 900px wide for stadiums, 400px for avatars)
+    const maxW = round ? 400 : 900;
+    const maxH = round ? 400 : 600;
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      let { width: w, height: h } = img;
+      if (w > maxW || h > maxH) { const r = Math.min(maxW/w, maxH/h); w = Math.round(w*r); h = Math.round(h*r); }
+      const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      onChange(canvas.toDataURL('image/jpeg', 0.88));
+    };
+    img.src = url;
+  };
+  const radius = round ? '50%' : '12px';
+  return (
+    <div style={{position:'relative', width, height, flexShrink:0}}>
+      <input ref={ref} type="file" accept="image/jpeg,image/png,image/webp" style={{display:'none'}} onChange={handleFile}/>
+      <div
+        onClick={() => ref.current.click()}
+        style={{width:'100%', height:'100%', borderRadius:radius, overflow:'hidden', cursor:'pointer',
+          border: value ? '2px solid rgba(61,220,104,0.4)' : '2px dashed rgba(61,220,104,0.3)',
+          background: value ? 'transparent' : 'rgba(61,220,104,0.05)',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6,
+          transition:'border-color 0.2s, background 0.2s', position:'relative'}}
+        className="img-picker-wrap"
+      >
+        {value
+          ? <img src={value} alt="" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+          : <>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(61,220,104,0.55)" strokeWidth="1.8">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span style={{fontSize:11,color:'rgba(61,220,104,0.55)',textAlign:'center',lineHeight:1.3,padding:'0 8px'}}>{label}</span>
+            </>
+        }
+        {/* hover overlay */}
+        <div className="img-picker-overlay" style={{position:'absolute',inset:0,borderRadius:radius,
+          background:'rgba(0,0,0,0.45)',display:'flex',flexDirection:'column',alignItems:'center',
+          justifyContent:'center',gap:4,opacity:0,transition:'opacity 0.18s',pointerEvents:'none'}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          <span style={{fontSize:11,color:'white'}}>{value ? 'Change' : 'Upload'}</span>
+        </div>
+      </div>
+      {value && (
+        <button onClick={(e)=>{e.stopPropagation();onChange(null);}}
+          style={{position:'absolute',top:-8,right:-8,width:22,height:22,borderRadius:'50%',
+            background:'#ef4444',border:'2px solid rgba(0,0,0,0.3)',color:'white',
+            fontSize:13,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',
+            zIndex:2}}>×</button>
+      )}
+    </div>
+  );
+}
+
+// ── Photo Zoom Modal — click any avatar to see full photo ────────
+function PhotoZoomModal({ name, src, onClose }) {
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div onClick={onClose} style={{
+      position:'fixed', inset:0, zIndex:9999,
+      background:'rgba(0,0,0,0.85)', backdropFilter:'blur(8px)',
+      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16,
+      cursor:'zoom-out',
+    }}>
+      {src
+        ? <img src={src} alt={name} onClick={e=>e.stopPropagation()} style={{
+            maxWidth:'min(90vw, 480px)', maxHeight:'min(80vh, 480px)',
+            borderRadius:16, objectFit:'cover',
+            boxShadow:'0 20px 80px rgba(0,0,0,0.8)',
+            border:'2px solid rgba(255,255,255,0.12)',
+            cursor:'default',
+          }}/>
+        : <div style={{width:180,height:180,borderRadius:'50%',background:`hsl(${name?.charCodeAt(0)*17%360},45%,22%)`,
+            display:'flex',alignItems:'center',justifyContent:'center',
+            fontSize:64,color:`hsl(${name?.charCodeAt(0)*17%360},70%,72%)`,
+            border:'3px solid rgba(255,255,255,0.15)',
+          }}>
+            {name?.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+          </div>
+      }
+      <span style={{color:'rgba(255,255,255,0.8)', fontSize:18, fontWeight:600, fontFamily:"'Syne',sans-serif"}}>{name}</span>
+      <span style={{color:'rgba(255,255,255,0.4)', fontSize:12}}>Click anywhere to close</span>
+    </div>
+  );
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -190,18 +319,25 @@ function ScheduleBuilder({ stadiumId, onClose }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [hasDefault, setHasDefault] = useState(false);
+  const [savingDefault, setSavingDefault] = useState(false);
+  const [resettingDay, setResettingDay] = useState(null);
 
   const TIME_OPTIONS = [];
   for (let h = 6; h <= 24; h++) TIME_OPTIONS.push(`${String(h).padStart(2,"0")}:00`);
 
   useEffect(() => {
-    apiCall(`/stadiums/${stadiumId}/schedule`).then(data => {
+    Promise.all([
+      apiCall(`/stadiums/${stadiumId}/schedule`),
+      apiCall(`/stadiums/${stadiumId}/default-schedule`)
+    ]).then(([data, def]) => {
       const s = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
       data.forEach(row => {
         const d = row.day_of_week;
         s[d] = [...(s[d]||[]), { slot_start:row.slot_start.slice(0,5), slot_end:row.slot_end.slice(0,5) }];
       });
       setSlots(s);
+      setHasDefault(def.length > 0);
     }).catch(()=>{}).finally(()=>setLoading(false));
   }, [stadiumId]);
 
@@ -233,6 +369,46 @@ function ScheduleBuilder({ stadiumId, onClose }) {
       onClose(true);
     } catch(err){ setError(err.message); }
     finally{ setSaving(false); }
+  };
+
+  const saveAsDefault = async () => {
+    setSavingDefault(true); setError("");
+    try {
+      const allSlots = [];
+      for(let d=0;d<7;d++) (slots[d]||[]).forEach(s=>allSlots.push({day_of_week:d,slot_start:s.slot_start,slot_end:s.slot_end}));
+      await apiCall(`/stadiums/${stadiumId}/default-schedule`,"PUT",{slots:allSlots});
+      setHasDefault(true);
+      alert("✅ Current schedule saved as default template!");
+    } catch(err){ setError(err.message); }
+    finally{ setSavingDefault(false); }
+  };
+
+  const resetDay = async (day) => {
+    if (!hasDefault) { alert("No default template saved yet. First set up a schedule, then click 'Save as Default'."); return; }
+    if (!window.confirm(`Reset ${DAYS[day]} to the default template? This will remove all current slots for ${DAYS[day]} and restore the saved default.`)) return;
+    setResettingDay(day);
+    try {
+      await apiCall(`/stadiums/${stadiumId}/reset-schedule`, "POST", { day: Number(day) });
+      const data = await apiCall(`/stadiums/${stadiumId}/schedule`);
+      const s = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+      data.forEach(row => { const d=row.day_of_week; s[d]=[...(s[d]||[]),{slot_start:row.slot_start.slice(0,5),slot_end:row.slot_end.slice(0,5)}]; });
+      setSlots(s);
+    } catch(err){ setError(err.message); }
+    finally{ setResettingDay(null); }
+  };
+
+  const resetAllDays = async () => {
+    if (!hasDefault) { alert("No default template saved yet."); return; }
+    if (!window.confirm("Reset ALL days to the default template? All current slots will be replaced.")) return;
+    setResettingDay('all');
+    try {
+      await apiCall(`/stadiums/${stadiumId}/reset-schedule`,"POST",{});
+      const data = await apiCall(`/stadiums/${stadiumId}/schedule`);
+      const s = {0:[],1:[],2:[],3:[],4:[],5:[],6:[]};
+      data.forEach(row => { const d=row.day_of_week; s[d]=[...(s[d]||[]),{slot_start:row.slot_start.slice(0,5),slot_end:row.slot_end.slice(0,5)}]; });
+      setSlots(s);
+    } catch(err){ setError(err.message); }
+    finally{ setResettingDay(null); }
   };
 
   const totalSlots = Object.values(slots).reduce((a,v)=>a+v.length,0);
@@ -279,9 +455,28 @@ function ScheduleBuilder({ stadiumId, onClose }) {
             <button className="copy-all-btn" onClick={copyToAll}>Copy {DAYS[activeDay]}'s slots to all days</button>
           </div>
         </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={()=>onClose(false)}>Cancel</button>
-          <button className="submit-btn" style={{flex:1}} onClick={save} disabled={saving}>{saving?<span className="spinner"/>:"Save Schedule"}</button>
+        <div className="modal-footer" style={{flexDirection:'column',gap:8}}>
+          <div style={{display:'flex',gap:8,width:'100%'}}>
+            <button className="btn-secondary" onClick={()=>onClose(false)}>Cancel</button>
+            <button className="submit-btn" style={{flex:1}} onClick={save} disabled={saving}>{saving?<span className="spinner"/>:"Save Schedule"}</button>
+          </div>
+          <div style={{display:'flex',gap:8,width:'100%'}}>
+            <button
+              onClick={saveAsDefault} disabled={savingDefault}
+              style={{flex:1,padding:'9px 14px',background:'rgba(250,204,21,0.08)',border:'1px solid rgba(250,204,21,0.3)',color:'#facc15',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6}}
+              title="Save current schedule as reusable default template"
+            >
+              {savingDefault?<span className="spinner sm"/>:'⭐'} Save as Default Template
+            </button>
+            <button
+              onClick={resetAllDays} disabled={!hasDefault || resettingDay==='all'}
+              style={{flex:1,padding:'9px 14px',background:'rgba(250,204,21,0.05)',border:'1px solid rgba(250,204,21,0.2)',color:hasDefault?'#facc15':'var(--text-muted)',borderRadius:10,cursor:hasDefault?'pointer':'not-allowed',fontSize:13,fontWeight:600,display:'flex',alignItems:'center',justifyContent:'center',gap:6,opacity:hasDefault?1:0.45}}
+              title={hasDefault?"Reset all days to default template":"No default saved yet"}
+            >
+              {resettingDay==='all'?<span className="spinner sm"/>:'↺'} Reset All to Default
+            </button>
+          </div>
+          {hasDefault && <div style={{fontSize:11,color:'var(--text-muted)',textAlign:'center'}}>⭐ Default template saved — use Reset buttons to restore any day</div>}
         </div>
       </div>
     </div>
@@ -299,7 +494,8 @@ function StadiumModal({ stadium, onClose, onSave }) {
     price_per_hour:stadium.price_per_hour, capacity:stadium.capacity||"",
     surface:stadium.surface||"grass", phone:stadium.phone||"",
     open_time:stadium.open_time?.slice(0,5)||"08:00", close_time:stadium.close_time?.slice(0,5)||"22:00",
-  } : EMPTY_FORM);
+    image_url: stadium.image_url||null,
+  } : {...EMPTY_FORM, image_url: null});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -322,10 +518,24 @@ function StadiumModal({ stadium, onClose, onSave }) {
           <button className="modal-close" onClick={onClose}><IconX/></button>
         </div>
         <form onSubmit={submit} className="modal-form">
-          <div className="field"><label>Stadium Name *</label><input name="name" value={form.name} onChange={handle} placeholder="Green Arena" required/></div>
-          <div className="form-row">
-            <div className="field"><label>City *</label><input name="city" value={form.city} onChange={handle} placeholder="Madrid" required/></div>
-            <div className="field"><label>Country *</label><input name="country" value={form.country} onChange={handle} placeholder="Spain" required/></div>
+          {/* Stadium photo */}
+          <div className="field">
+            <label>Stadium Photo</label>
+            <div style={{display:'flex',alignItems:'flex-start',gap:16}}>
+              <ImagePicker
+                value={form.image_url}
+                onChange={v => setForm({...form, image_url: v})}
+                width={120} height={80} round={false}
+                label="Add Photo"
+              />
+              <div style={{flex:1,display:'flex',flexDirection:'column',gap:10}}>
+                <div className="field" style={{margin:0}}><label>Stadium Name *</label><input name="name" value={form.name} onChange={handle} placeholder="Green Arena" required/></div>
+                <div className="form-row" style={{margin:0}}>
+                  <div className="field" style={{margin:0}}><label>City *</label><input name="city" value={form.city} onChange={handle} placeholder="Madrid" required/></div>
+                  <div className="field" style={{margin:0}}><label>Country *</label><input name="country" value={form.country} onChange={handle} placeholder="Spain" required/></div>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="field"><label>Description</label><textarea name="description" value={form.description} onChange={handle} placeholder="Describe your stadium..." rows={3}/></div>
           <div className="form-row">
@@ -356,7 +566,7 @@ function StadiumModal({ stadium, onClose, onSave }) {
 // ══════════════════════════════════════════════════════════════════
 function BookSlotModal({ stadium, onClose, onBooked }) {
   const [selectedDay, setSelectedDay] = useState(new Date().getDay());
-  const [slotsData, setSlotsData] = useState({ slots:[], bookings:[] });
+  const [slotsData, setSlotsData] = useState({ slots:[], bookings:[], pending:[] });
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [bookedStart, setBookedStart] = useState("");
   const [bookedEnd, setBookedEnd] = useState("");
@@ -368,16 +578,19 @@ function BookSlotModal({ stadium, onClose, onBooked }) {
   const loadSlots = useCallback(async (day) => {
     setLoadingSlots(true); setBookedStart(""); setBookedEnd(""); setError("");
     try { setSlotsData(await apiCall(`/stadiums/${stadium.id}/slots?day=${day}`)); }
-    catch { setSlotsData({ slots:[], bookings:[] }); }
+    catch { setSlotsData({ slots:[], bookings:[], pending:[] }); }
     setLoadingSlots(false);
   }, [stadium.id]);
 
   useEffect(() => { loadSlots(selectedDay); }, [selectedDay, loadSlots]);
 
-  // Compute free windows from schedule + existing bookings
+  // Free windows only subtract CONFIRMED bookings — pending don't block
   const freeWindows = computeFreeWindows(slotsData.slots, slotsData.bookings);
   const startOptions = validStartTimes(freeWindows);
   const endOptions = bookedStart ? validEndTimes(toMin(bookedStart), freeWindows) : [];
+
+  // Count how many pending requests touch each free window (info only)
+  const pendingCount = (slotsData.pending || []).length;
 
   // When start changes, reset end if it's no longer valid
   const handleStartChange = (val) => {
@@ -453,6 +666,12 @@ function BookSlotModal({ stadium, onClose, onBooked }) {
                         <span className="free-window-dur">{(w.end-w.start)/60}h free</span>
                       </div>
                     ))}
+                    {pendingCount > 0 && (
+                      <div style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#facc15',marginTop:4,padding:'5px 10px',background:'rgba(250,204,21,0.07)',border:'1px solid rgba(250,204,21,0.18)',borderRadius:8}}>
+                        <span>⏳</span>
+                        <span>{pendingCount} pending request{pendingCount>1?'s':''} awaiting owner approval — slot still bookable</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -551,7 +770,20 @@ function BookingsPanel({ stadiumId, stadiumName }) {
 
   const updateStatus = async (id, status) => {
     setActionLoading(id);
-    try { await apiCall(`/bookings/${id}/status`,"PATCH",{status}); await load(); } catch {}
+    try {
+      const result = await apiCall(`/bookings/${id}/status`, "PATCH", { status });
+      await load();
+      if (result._warning) {
+        setTimeout(() => alert(`⚠️ ${result._warning}`), 100);
+      }
+    } catch {}
+    setActionLoading(null);
+  };
+
+  const deleteBooking = async (id) => {
+    if (!window.confirm('Remove this booking from the list? This cannot be undone.')) return;
+    setActionLoading(`del-${id}`);
+    try { await apiCall(`/bookings/${id}`, 'DELETE'); await load(); } catch {}
     setActionLoading(null);
   };
 
@@ -559,6 +791,24 @@ function BookingsPanel({ stadiumId, stadiumName }) {
     (filterDay==="all"||b.day_of_week===parseInt(filterDay)) &&
     (filterStatus==="all"||b.status===filterStatus)
   );
+
+  // Find which pending bookings overlap each other — map id → list of conflicting player names+times
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const overlapMap = new Map(); // id → [{ name, time }]
+  for (let i = 0; i < pendingBookings.length; i++) {
+    for (let j = i + 1; j < pendingBookings.length; j++) {
+      const a = pendingBookings[i], b2 = pendingBookings[j];
+      if (a.day_of_week === b2.day_of_week &&
+          toMin(a.booked_start) < toMin(b2.booked_end) &&
+          toMin(a.booked_end) > toMin(b2.booked_start)) {
+        if (!overlapMap.has(a.id)) overlapMap.set(a.id, []);
+        if (!overlapMap.has(b2.id)) overlapMap.set(b2.id, []);
+        overlapMap.get(a.id).push({ name: b2.player_name, time: `${b2.booked_start?.slice(0,5)}–${b2.booked_end?.slice(0,5)}` });
+        overlapMap.get(b2.id).push({ name: a.player_name, time: `${a.booked_start?.slice(0,5)}–${a.booked_end?.slice(0,5)}` });
+      }
+    }
+  }
+  const overlappingIds = new Set(overlapMap.keys());
 
   return (
     <div className="bookings-panel">
@@ -581,9 +831,31 @@ function BookingsPanel({ stadiumId, stadiumName }) {
       {loading && <div className="center-spinner"><span className="spinner large"/></div>}
       {!loading && filtered.length===0 && <div className="empty-state"><div className="empty-icon"><IconBookmark/></div><p>No bookings{filterDay!=="all"||filterStatus!=="all"?" matching filters":""}</p></div>}
 
+      {!loading && overlappingIds.size > 0 && (
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'12px 16px',background:'rgba(250,204,21,0.10)',border:'1px solid rgba(250,204,21,0.35)',borderRadius:12,marginBottom:12,color:'#facc15',fontWeight:600,fontSize:13}}>
+          <span style={{fontSize:18}}>⚠️</span>
+          <span>{overlappingIds.size} pending booking{overlappingIds.size>1?'s':''} overlap each other — review carefully before confirming. Confirming one will auto-cancel the others.</span>
+        </div>
+      )}
+
       <div className="booking-list">
-        {filtered.map(b=>(
-          <div key={b.id} className="booking-card owner">
+        {filtered.map(b=>{
+          const conflicts = overlapMap.get(b.id) || [];
+          const hasConflict = conflicts.length > 0;
+          return (
+          <div key={b.id} style={{display:'flex',flexDirection:'column',gap:0}}>
+            {hasConflict && (
+              <div className="overlap-flag" style={{borderBottomLeftRadius:0,borderBottomRightRadius:0,marginBottom:0,borderBottom:'none',display:'flex',alignItems:'flex-start',gap:8,flexWrap:'wrap'}}>
+                <span style={{flexShrink:0}}>⚠️ Conflicts with:</span>
+                {conflicts.map((c,ci) => (
+                  <span key={ci} style={{background:'rgba(250,204,21,0.15)',border:'1px solid rgba(250,204,21,0.35)',borderRadius:6,padding:'1px 8px',fontSize:12,whiteSpace:'nowrap'}}>
+                    {c.name} · {c.time}
+                  </span>
+                ))}
+                <span style={{fontSize:12,opacity:0.75,marginLeft:'auto'}}>Confirming this will auto-cancel the others</span>
+              </div>
+            )}
+            <div className={`booking-card owner${hasConflict ? ' overlap-warning' : ''}`} style={hasConflict?{borderTopLeftRadius:0,borderTopRightRadius:0}:{}}>
             <div className="booking-card-left">
               <Avatar name={b.player_name} size={36}/>
               <div>
@@ -606,9 +878,19 @@ function BookingsPanel({ stadiumId, stadiumName }) {
                   <button className="action-btn danger" onClick={()=>updateStatus(b.id,"cancelled")} disabled={actionLoading===b.id}><IconX/></button>
                 </div>
               )}
+              <button
+                className="action-btn danger"
+                onClick={() => deleteBooking(b.id)}
+                disabled={actionLoading===`del-${b.id}`}
+                title="Remove from list"
+                style={{marginTop:6,fontSize:11,padding:'4px 10px',opacity:0.6}}
+              >
+                {actionLoading===`del-${b.id}` ? <span className="spinner sm"/> : <><IconTrash/> Remove</>}
+              </button>
             </div>
           </div>
-        ))}
+          </div>
+        );})}
       </div>
     </div>
   );
@@ -624,13 +906,20 @@ function StadiumCard({ stadium, onEdit, onDelete, onToggle, onSchedule, onViewBo
 
   return (
     <div className={`stadium-card ${!stadium.is_active?"inactive":""}`}>
+      {stadium.image_url && (
+        <div className="stadium-card-img">
+          <img src={stadium.image_url} alt={stadium.name} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+          <div className="stadium-card-img-overlay"/>
+          <div className={`stadium-status-badge ${stadium.is_active?"active":"inactive"}`} style={{position:'absolute',top:10,right:10}}>{stadium.is_active?"Active":"Inactive"}</div>
+        </div>
+      )}
       <div className="stadium-card-header">
         <div className="stadium-surface-dot" style={{background:color}}/>
         <div className="stadium-card-info">
           <h3 className="stadium-card-name">{stadium.name}</h3>
           <span className="stadium-card-meta"><IconMapPin/> {[stadium.city, stadium.country].filter(Boolean).join(', ')}</span>
         </div>
-        <div className={`stadium-status-badge ${stadium.is_active?"active":"inactive"}`}>{stadium.is_active?"Active":"Inactive"}</div>
+        {!stadium.image_url && <div className={`stadium-status-badge ${stadium.is_active?"active":"inactive"}`}>{stadium.is_active?"Active":"Inactive"}</div>}
       </div>
       {stadium.description&&<p className="stadium-card-desc">{stadium.description}</p>}
       <div className="stadium-card-stats">
@@ -780,13 +1069,20 @@ function BrowseStadiumsPage({ onMessageOwner }) {
           const color = SURFACE_COLOR[s.surface] || '#4ade80';
           return (
             <div key={s.id} className="stadium-card browse">
+              {s.image_url && (
+                <div className="stadium-card-img">
+                  <img src={s.image_url} alt={s.name} style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                  <div className="stadium-card-img-overlay"/>
+                  <span className="surface-tag" style={{ color, borderColor:`${color}40`, background:`${color}20`, fontSize:11, position:'absolute', bottom:8, left:8 }}>{SURFACES[s.surface]}</span>
+                </div>
+              )}
               <div className="stadium-card-header">
                 <div className="stadium-surface-dot" style={{ background: color }}/>
                 <div className="stadium-card-info">
                   <h3 className="stadium-card-name">{s.name}</h3>
                   <span className="stadium-card-meta"><IconMapPin/> {[s.city, s.country].filter(Boolean).join(', ')}</span>
                 </div>
-                <span className="surface-tag" style={{ color, borderColor: `${color}40`, background: `${color}10`, fontSize: 11 }}>{SURFACES[s.surface]}</span>
+                {!s.image_url && <span className="surface-tag" style={{ color, borderColor: `${color}40`, background: `${color}10`, fontSize: 11 }}>{SURFACES[s.surface]}</span>}
               </div>
               {s.description && <p className="stadium-card-desc">{s.description}</p>}
               <div className="stadium-card-stats">
@@ -795,11 +1091,11 @@ function BrowseStadiumsPage({ onMessageOwner }) {
                 <div className="stat"><IconClock/><span>{s.open_time?.slice(0,5)} – {s.close_time?.slice(0,5)}</span></div>
                 {s.phone && <div className="stat"><IconPhone/><span>{s.phone}</span></div>}
               </div>
-              <div className="browse-owner"><Avatar name={s.owner_name} size={22}/><span>by {s.owner_name}</span></div>
+              <div className="browse-owner"><Avatar name={s.owner_name} src={s.owner_avatar} size={22}/><span>by {s.owner_name}</span></div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="book-btn" style={{ flex: 1 }} onClick={() => setBookingStadium(s)}><IconCalendar/> Book a Slot</button>
                 <button className="book-btn" style={{ flex: 1, background: 'rgba(74,222,128,0.08)', color: 'var(--primary)', border: '1px solid rgba(74,222,128,0.25)' }}
-                  onClick={() => onMessageOwner && onMessageOwner({ partner_id: s.owner_id, partner_name: s.owner_name, partner_role: 'Stadium Owner' })}>
+                  onClick={() => onMessageOwner && onMessageOwner({ partner_id: s.owner_id, partner_name: s.owner_name, partner_avatar: s.owner_avatar || null, partner_role: 'Stadium Owner' })}>
                   <IconChat /> Message
                 </button>
               </div>
@@ -885,7 +1181,7 @@ function PlayerCard({ player, currentUserId, onAction, actionLoading, onViewAvai
   const locationStr = [city, country].filter(Boolean).join(', ');
   return (
     <div className="player-card">
-      <Avatar name={name}/>
+      <Avatar name={name} src={player.avatar_url}/>
       <div className="player-info">
         <span className="player-name">{name}</span>
         {locationStr&&<span className="player-meta"><IconMapPin/> {locationStr}</span>}
@@ -1151,11 +1447,25 @@ function NotificationsPanel({ onClose, onUnreadChange }) {
     onUnreadChange(notifications.filter(n => !n.is_read && n.id !== id).length);
   };
 
+  // Auto mark all as read when panel closes
+  useEffect(() => {
+    return () => {
+      apiCall('/notifications/read-all', 'PATCH').catch(()=>{});
+      onUnreadChange(0);
+    };
+  }, [onUnreadChange]);
+
   const typeIcon = (type) => {
     if (type === 'message') return '💬';
-    if (type === 'friend_request') return '👋';
+    if (type === 'group_message') return '💬';
+    if (type === 'friend_request') return '👥';
+    if (type === 'friend_accepted') return '✅';
     if (type === 'group_invite') return '⚽';
+    if (type === 'group_kicked') return '🚫';
     if (type === 'booking') return '📅';
+    if (type === 'booking_confirmed') return '✅';
+    if (type === 'booking_cancelled') return '❌';
+    if (type === 'booking_cancelled_by_owner') return '❌';
     return '🔔';
   };
 
@@ -1209,8 +1519,11 @@ function ChatWindow({ user, partner, onBack }) {
   const [newMsg, setNewMsg] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [zoomPhoto, setZoomPhoto] = useState(null);
+  const [ctxMenu, setCtxMenu] = useState(null); // { msgId, isMe, x, y }
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+  const holdTimer = useRef(null);
 
   const loadMessages = useCallback(async () => {
     try { setMessages(await apiCall(`/messages/${partner.partner_id}`)); }
@@ -1227,45 +1540,117 @@ function ChatWindow({ user, partner, onBack }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Close context menu on outside click
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const handler = () => setCtxMenu(null);
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => { document.removeEventListener('mousedown', handler); document.removeEventListener('touchstart', handler); };
+  }, [ctxMenu]);
+
   const sendMessage = async (e) => {
     e?.preventDefault();
     if (!newMsg.trim() || sending) return;
     setSending(true);
     try {
       const msg = await apiCall('/messages', 'POST', { receiverId: partner.partner_id, content: newMsg });
-      setMessages(prev => [...prev, { ...msg, sender_name: user.name }]);
+      setMessages(prev => [...prev, { ...msg, sender_name: user.name, sender_avatar: user.avatarUrl }]);
       setNewMsg('');
     } catch {}
     setSending(false);
   };
 
+  const deleteMessage = async (msgId, scope) => {
+    setCtxMenu(null);
+    try {
+      await apiCall(`/messages/${msgId}`, 'DELETE', { scope });
+      if (scope === 'me') {
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+      } else {
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted_for_all: true, content: null } : m));
+      }
+    } catch (err) { alert(err.message); }
+  };
+
+  const onHoldStart = (e, msg, isMe) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect(); // capture NOW before timeout
+    holdTimer.current = setTimeout(() => {
+      setCtxMenu({ msgId: msg.id, isMe, x: rect.left, y: rect.top });
+    }, 500);
+  };
+  const onHoldEnd = () => clearTimeout(holdTimer.current);
+
   const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <>
+      {zoomPhoto && <PhotoZoomModal name={zoomPhoto.name} src={zoomPhoto.src} onClose={() => setZoomPhoto(null)}/>}
+
+      {/* Context menu */}
+      {ctxMenu && (
+        <div className="msg-ctx-menu" style={{position:'fixed',top:ctxMenu.y,left:ctxMenu.x,zIndex:9999}}
+          onMouseDown={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
+          <button onClick={() => deleteMessage(ctxMenu.msgId, 'me')}>🗑️ Delete for me</button>
+          {ctxMenu.isMe && <button onClick={() => deleteMessage(ctxMenu.msgId, 'all')} style={{color:'#f87171'}}>🗑️ Delete for everyone</button>}
+        </div>
+      )}
+
+      {/* Header */}
       <div className="chat-main-header">
         <button className="back-btn" onClick={onBack}><IconArrowLeft /></button>
-        <Avatar name={partner.partner_name} size={36} />
+        <div style={{cursor:'pointer'}} onClick={() => setZoomPhoto({ name: partner.partner_name, src: partner.partner_avatar })}>
+          <Avatar name={partner.partner_name} src={partner.partner_avatar} size={40}/>
+        </div>
         <div>
-          <span className="chat-partner-name">{partner.partner_name}</span>
+          <span className="chat-partner-name" style={{cursor:'pointer'}}
+            onClick={() => setZoomPhoto({ name: partner.partner_name, src: partner.partner_avatar })}>
+            {partner.partner_name}
+          </span>
           {[partner.partner_city, partner.partner_country].filter(Boolean).join(', ') && <span className="chat-partner-loc"><IconMapPin /> {[partner.partner_city, partner.partner_country].filter(Boolean).join(', ')}</span>}
           {partner.partner_role && <span className="chat-partner-loc" style={{color:'#f59e0b'}}>⚽ {partner.partner_role}</span>}
         </div>
       </div>
+
       <div className="messages-list">
         {loading && <div className="center-spinner"><span className="spinner large" /></div>}
         {!loading && messages.length === 0 && <div className="chat-empty-hint">Say hi! 👋</div>}
         {messages.map((m, i) => {
           const isMe = m.sender_id === user.id;
-          const showName = !isMe && (i === 0 || messages[i-1]?.sender_id !== m.sender_id);
+          const showAvatar = !isMe && (i === 0 || messages[i-1]?.sender_id !== m.sender_id);
+          const showMyAvatar = isMe && (i === messages.length-1 || messages[i+1]?.sender_id !== m.sender_id);
+          const isDeleted = m.deleted_for_all;
           return (
             <div key={m.id} className={`message-row ${isMe ? 'me' : 'them'}`}>
-              {!isMe && showName && <Avatar name={m.sender_name} size={28} />}
-              {!isMe && !showName && <div style={{ width: 28 }} />}
-              <div className="message-bubble">
-                <p>{m.content}</p>
+              {!isMe && (
+                showAvatar
+                  ? <div style={{cursor:'pointer', flexShrink:0}} onClick={() => setZoomPhoto({ name: m.sender_name, src: m.sender_avatar })}>
+                      <Avatar name={m.sender_name} src={m.sender_avatar} size={30}/>
+                    </div>
+                  : <div style={{ width: 30, flexShrink:0 }} />
+              )}
+              <div
+                className={`message-bubble${isDeleted?' deleted':''}`}
+                onMouseDown={!isDeleted ? (e) => onHoldStart(e, m, isMe) : undefined}
+                onMouseUp={onHoldEnd} onMouseLeave={onHoldEnd}
+                onTouchStart={!isDeleted ? (e) => onHoldStart(e, m, isMe) : undefined}
+                onTouchEnd={onHoldEnd}
+                style={!isDeleted ? {cursor:'context-menu'} : {}}
+              >
+                {isDeleted
+                  ? <p style={{fontStyle:'italic',opacity:0.5,fontSize:13}}>🚫 This message was deleted</p>
+                  : <p>{m.content}</p>
+                }
                 <span className="message-time">{formatTime(m.created_at)}</span>
               </div>
+              {isMe && (
+                showMyAvatar
+                  ? <div style={{cursor:'pointer', flexShrink:0}} onClick={() => setZoomPhoto({ name: user.name, src: user.avatarUrl })}>
+                      <Avatar name={user.name} src={user.avatarUrl} size={30}/>
+                    </div>
+                  : <div style={{ width: 30, flexShrink:0 }} />
+              )}
             </div>
           );
         })}
@@ -1281,6 +1666,7 @@ function ChatWindow({ user, partner, onBack }) {
     </>
   );
 }
+
 
 function ChatPage({ user, initialPartner }) {
   const [contacts, setContacts] = useState([]); // friends + owners from conversations
@@ -1301,6 +1687,7 @@ function ChatPage({ user, initialPartner }) {
         partner_id: f.id,
         partner_name: f.name,
         partner_city: f.city, partner_country: f.country,
+        partner_avatar: f.avatar_url || null,
         partner_role: 'Friend',
         last_message: null,
         unread_count: 0,
@@ -1311,6 +1698,7 @@ function ChatPage({ user, initialPartner }) {
           partner_id: c.partner_id,
           partner_name: c.partner_name,
           partner_city: c.partner_city, partner_country: c.partner_country,
+          partner_avatar: c.partner_avatar || existing?.partner_avatar || null,
           partner_role: existing?.partner_role || null,
           last_message: c.last_message,
           last_message_at: c.last_message_at,
@@ -1366,7 +1754,7 @@ function ChatPage({ user, initialPartner }) {
             <div key={c.partner_id}
               className={`conv-item ${activeConv?.partner_id === c.partner_id ? 'active' : ''}`}
               onClick={() => { setActiveConv(c); loadContacts(); }}>
-              <Avatar name={c.partner_name} size={42} />
+              <Avatar name={c.partner_name} src={c.partner_avatar} size={42} />
               <div className="conv-info">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span className="conv-name">{c.partner_name}</span>
@@ -1675,16 +2063,22 @@ function GroupDetail({ group, user, onBack }) {
   const [activeTab, setActiveTab] = useState('chat');
   const [friends, setFriends] = useState([]);
   const [inviting, setInviting] = useState(null);
+  const [invited, setInvited] = useState(new Set()); // track successfully invited
   const [showEdit, setShowEdit] = useState(false);
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+  const [kicked, setKicked] = useState(false);
 
   const loadDetail = useCallback(async () => {
     try { setDetail(await apiCall(`/groups/${group.id}`)); } catch {}
   }, [group.id]);
 
   const loadMessages = useCallback(async () => {
-    try { setMessages(await apiCall(`/groups/${group.id}/messages`)); } catch {}
+    try {
+      setMessages(await apiCall(`/groups/${group.id}/messages`));
+    } catch (err) {
+      if (err.message === 'Not a member') setKicked(true);
+    }
   }, [group.id]);
 
   useEffect(() => {
@@ -1693,6 +2087,15 @@ function GroupDetail({ group, user, onBack }) {
     pollRef.current = setInterval(loadMessages, 3000);
     return () => clearInterval(pollRef.current);
   }, [loadDetail, loadMessages]);
+
+  // Auto-exit when kicked — stop polling and return to groups list
+  useEffect(() => {
+    if (kicked) {
+      clearInterval(pollRef.current);
+      const t = setTimeout(() => onBack(), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [kicked, onBack]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1704,13 +2107,38 @@ function GroupDetail({ group, user, onBack }) {
     }
   }, [activeTab]);
 
+  const [zoomPhoto, setZoomPhoto] = useState(null);
+  const [ctxMenu, setCtxMenu] = useState(null);
+  const holdTimerRef = useRef(null);
+
+  const onHoldStart = (e, msg, isMe) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect(); // capture NOW before timeout
+    holdTimerRef.current = setTimeout(() => {
+      setCtxMenu({ msgId: msg.id, isMe, x: rect.left, y: rect.top });
+    }, 500);
+  };
+  const onHoldEnd = () => clearTimeout(holdTimerRef.current);
+
+  const deleteGroupMessage = async (msgId, scope) => {
+    setCtxMenu(null);
+    try {
+      await apiCall(`/groups/${group.id}/messages/${msgId}`, 'DELETE', { scope });
+      if (scope === 'me') {
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+      } else {
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, deleted_for_all: true, content: null } : m));
+      }
+    } catch (err) { alert(err.message); }
+  };
+
   const sendMessage = async (e) => {
     e?.preventDefault();
     if (!newMsg.trim() || sending) return;
     setSending(true);
     try {
       const msg = await apiCall(`/groups/${group.id}/messages`, 'POST', { content: newMsg });
-      setMessages(prev => [...prev, { ...msg, sender_name: user.name }]);
+      setMessages(prev => [...prev, { ...msg, sender_name: user.name, sender_avatar: user.avatarUrl }]);
       setNewMsg('');
     } catch {}
     setSending(false);
@@ -1718,8 +2146,19 @@ function GroupDetail({ group, user, onBack }) {
 
   const inviteFriend = async (friendId) => {
     setInviting(friendId);
-    try { await apiCall(`/groups/${group.id}/invite`, 'POST', { userId: friendId }); }
-    catch {} setInviting(null);
+    try {
+      await apiCall(`/groups/${group.id}/invite`, 'POST', { userId: friendId });
+      setInvited(prev => new Set([...prev, friendId]));
+    } catch {}
+    setInviting(null);
+  };
+
+  const kickMember = async (memberId, memberName) => {
+    if (!window.confirm(`Remove ${memberName} from the group?`)) return;
+    try {
+      await apiCall(`/groups/${group.id}/members/${memberId}`, 'DELETE');
+      setDetail(prev => ({ ...prev, members: prev.members.filter(m => m.id !== memberId) }));
+    } catch (e) { alert(e?.message || 'Failed to remove member'); }
   };
 
   const leaveGroup = async () => {
@@ -1736,6 +2175,12 @@ function GroupDetail({ group, user, onBack }) {
 
   return (
     <div className="group-detail">
+      {kicked && (
+        <div style={{background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.35)',borderRadius:12,padding:'14px 20px',margin:'16px',display:'flex',alignItems:'center',gap:12,color:'#f87171',fontWeight:600,fontSize:14}}>
+          <span style={{fontSize:20}}>🚫</span>
+          <div><div>You have been removed from this group.</div><div style={{fontWeight:400,fontSize:12,opacity:0.75,marginTop:2}}>Returning to groups list in a moment…</div></div>
+        </div>
+      )}
       <div className="group-detail-header">
         <button className="back-btn" onClick={onBack}><IconArrowLeft /></button>
         <div className="group-avatar sm"><IconGroup /></div>
@@ -1766,20 +2211,53 @@ function GroupDetail({ group, user, onBack }) {
 
       {activeTab === 'chat' && (
         <div className="group-chat-area">
-          <div className="messages-list">
+          {zoomPhoto && <PhotoZoomModal name={zoomPhoto.name} src={zoomPhoto.src} onClose={() => setZoomPhoto(null)}/>}
+          {ctxMenu && (
+            <div className="msg-ctx-menu" style={{position:'fixed',top:ctxMenu.y,left:ctxMenu.x,zIndex:9999}}
+              onMouseDown={e=>e.stopPropagation()} onTouchStart={e=>e.stopPropagation()}>
+              <button onClick={() => deleteGroupMessage(ctxMenu.msgId, 'me')}>🗑️ Delete for me</button>
+              {ctxMenu.isMe && <button onClick={() => deleteGroupMessage(ctxMenu.msgId, 'all')} style={{color:'#f87171'}}>🗑️ Delete for everyone</button>}
+            </div>
+          )}
+          <div className="messages-list" onClick={() => setCtxMenu(null)}>
             {messages.length === 0 && <div className="chat-empty-hint">Be the first to say something! 👋</div>}
             {messages.map((m, i) => {
               const isMe = m.sender_id === user.id;
-              const showName = !isMe && (i === 0 || messages[i-1]?.sender_id !== m.sender_id);
+              const showAvatar = !isMe && (i === 0 || messages[i-1]?.sender_id !== m.sender_id);
+              const showMyAvatar = isMe && (i === messages.length - 1 || messages[i+1]?.sender_id !== m.sender_id);
+              const showName = !isMe && showAvatar;
+              const isDeleted = m.deleted_for_all;
               return (
                 <div key={m.id} className={`message-row ${isMe ? 'me' : 'them'}`}>
-                  {!isMe && showName && <Avatar name={m.sender_name} size={28} />}
-                  {!isMe && !showName && <div style={{ width: 28 }} />}
-                  <div className="message-bubble">
-                    {showName && !isMe && <span className="bubble-sender">{m.sender_name}</span>}
-                    <p>{m.content}</p>
+                  {!isMe && (
+                    showAvatar
+                      ? <div style={{cursor:'pointer',flexShrink:0}} onClick={() => setZoomPhoto({ name: m.sender_name, src: m.sender_avatar })}>
+                          <Avatar name={m.sender_name} src={m.sender_avatar} size={30}/>
+                        </div>
+                      : <div style={{width:30,flexShrink:0}}/>
+                  )}
+                  <div
+                    className={`message-bubble${isDeleted ? ' deleted' : ''}`}
+                    onMouseDown={!isDeleted ? (e) => onHoldStart(e, m, isMe) : undefined}
+                    onMouseUp={onHoldEnd} onMouseLeave={onHoldEnd}
+                    onTouchStart={!isDeleted ? (e) => onHoldStart(e, m, isMe) : undefined}
+                    onTouchEnd={onHoldEnd}
+                    style={!isDeleted ? {cursor:'context-menu'} : {}}
+                  >
+                    {showName && <span className="bubble-sender">{m.sender_name}</span>}
+                    {isDeleted
+                      ? <p style={{fontStyle:'italic',opacity:0.5,fontSize:13}}>🚫 This message was deleted</p>
+                      : <p>{m.content}</p>
+                    }
                     <span className="message-time">{formatTime(m.created_at)}</span>
                   </div>
+                  {isMe && (
+                    showMyAvatar
+                      ? <div style={{cursor:'pointer',flexShrink:0}} onClick={() => setZoomPhoto({ name: user.name, src: user.avatarUrl })}>
+                          <Avatar name={user.name} src={user.avatarUrl} size={30}/>
+                        </div>
+                      : <div style={{width:30,flexShrink:0}}/>
+                  )}
                 </div>
               );
             })}
@@ -1796,15 +2274,30 @@ function GroupDetail({ group, user, onBack }) {
 
       {activeTab === 'members' && (
         <div className="tab-content">
+          {zoomPhoto && <PhotoZoomModal name={zoomPhoto.name} src={zoomPhoto.src} onClose={() => setZoomPhoto(null)}/>}
           <div className="player-list">
             {(detail?.members || []).map(m => (
               <div key={m.id} className="player-card">
-                <Avatar name={m.name} />
+                <div style={{cursor:'pointer'}} onClick={() => setZoomPhoto({ name: m.name, src: m.avatar_url })}>
+                  <Avatar name={m.name} src={m.avatar_url} size={42}/>
+                </div>
                 <div className="player-info">
-                  <span className="player-name">{m.name}{m.id === user.id ? ' (you)' : ''}</span>
+                  <span className="player-name" style={{cursor:'pointer'}} onClick={() => setZoomPhoto({ name: m.name, src: m.avatar_url })}>
+                    {m.name}{m.id === user.id ? ' (you)' : ''}
+                  </span>
                   {[m.city,m.country].filter(Boolean).join(', ') && <span className="player-meta"><IconMapPin /> {[m.city,m.country].filter(Boolean).join(', ')}</span>}
                 </div>
                 {m.role === 'admin' && <span className="admin-badge"><IconShield /> Admin</span>}
+                {isAdmin && m.id !== user.id && m.role !== 'admin' && (
+                  <button
+                    className="action-btn danger-sm"
+                    onClick={() => kickMember(m.id, m.name)}
+                    title={`Remove ${m.name}`}
+                    style={{marginLeft:'auto',padding:'6px 12px',fontSize:12,background:'rgba(239,68,68,0.12)',border:'1px solid rgba(239,68,68,0.3)',color:'#f87171',borderRadius:8,cursor:'pointer',flexShrink:0}}
+                  >
+                    ✕ Kick
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -1814,13 +2307,15 @@ function GroupDetail({ group, user, onBack }) {
               <div className="player-list">
                 {friends.filter(f => !memberIds.has(f.id)).map(f => (
                   <div key={f.id} className="player-card">
-                    <Avatar name={f.name} />
+                    <div style={{cursor:'pointer'}} onClick={() => setZoomPhoto({ name: f.name, src: f.avatar_url })}>
+                      <Avatar name={f.name} src={f.avatar_url} size={42}/>
+                    </div>
                     <div className="player-info">
                       <span className="player-name">{f.name}</span>
                       {[f.city,f.country].filter(Boolean).join(', ') && <span className="player-meta"><IconMapPin /> {[f.city,f.country].filter(Boolean).join(', ')}</span>}
                     </div>
-                    <button className="action-btn primary" onClick={() => inviteFriend(f.id)} disabled={inviting === f.id}>
-                      {inviting === f.id ? <span className="spinner sm" /> : <><IconUserPlus /> Invite</>}
+                    <button className={`action-btn ${invited.has(f.id) ? 'success' : 'primary'}`} onClick={() => !invited.has(f.id) && inviteFriend(f.id)} disabled={inviting === f.id || invited.has(f.id)} style={invited.has(f.id)?{cursor:'default',opacity:0.8}:{}}>
+                      {inviting === f.id ? <span className="spinner sm" /> : invited.has(f.id) ? <>⏳ Pending</> : <><IconUserPlus /> Invite</>}
                     </button>
                   </div>
                 ))}
@@ -1926,6 +2421,337 @@ function EditGroupModal({ group, onClose, onSaved }) {
   );
 }
 
+
+// ══════════════════════════════════════════════════════════════════
+//  SETTINGS PAGE
+// ══════════════════════════════════════════════════════════════════
+function SettingsPage({ user, onAvatarChange, onLogout, isOwner }) {
+  const [activeSection, setActiveSection] = useState('profile');
+  const [uploading, setUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [zoomPhoto, setZoomPhoto] = useState(null);
+
+  // ── Avatar upload ──────────────────────────────────────────────
+  const handleAvatarFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 8 * 1024 * 1024) { alert('Max 8MB'); return; }
+    setUploading(true); setUploadSuccess(false);
+    const compress = (f) => new Promise(resolve => {
+      const img = new Image(); const url = URL.createObjectURL(f);
+      img.onload = () => {
+        let { width: w, height: h } = img;
+        const max = 480;
+        if (w > max || h > max) { const r = Math.min(max/w, max/h); w = Math.round(w*r); h = Math.round(h*r); }
+        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = url;
+    });
+    try {
+      const compressed = await compress(file);
+      const res = await apiCall('/auth/avatar', 'PUT', { imageBase64: compressed });
+      onAvatarChange({ avatarUrl: res.avatarUrl });
+      setUploadSuccess(true);
+      setTimeout(() => setUploadSuccess(false), 3000);
+    } catch (err) { alert('Upload failed: ' + err.message); }
+    setUploading(false);
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!window.confirm('Remove your profile photo?')) return;
+    try {
+      await apiCall('/auth/avatar', 'PUT', { imageBase64: null });
+      onAvatarChange({ avatarUrl: null });
+    } catch (err) { alert('Failed: ' + err.message); }
+  };
+
+  const sections = isOwner
+    ? [{ id: 'profile', label: 'Profile Photo', icon: '📷' }, { id: 'account', label: 'Account', icon: '⚙️' }]
+    : [{ id: 'profile', label: 'Profile Photo', icon: '📷' }, { id: 'availability', label: 'Availability', icon: '📅' }, { id: 'account', label: 'Account', icon: '⚙️' }];
+
+  return (
+    <div className="settings-root">
+      {zoomPhoto && <PhotoZoomModal name={zoomPhoto.name} src={zoomPhoto.src} onClose={() => setZoomPhoto(null)}/>}
+      {showDeleteAccount && <DeleteAccountModal onClose={() => setShowDeleteAccount(false)} onDeleted={onLogout}/>}
+
+      <div className="settings-layout">
+        {/* ── Sidebar ── */}
+        <aside className="settings-sidebar">
+          <div className="settings-profile-mini">
+            <div style={{position:'relative',cursor:'pointer'}} onClick={() => user.avatarUrl && setZoomPhoto({name: user.name, src: user.avatarUrl})}>
+              <Avatar name={user.name} src={user.avatarUrl} size={64}/>
+            </div>
+            <div>
+              <div className="settings-username">{user.name}</div>
+              <div className="settings-useremail">{user.email}</div>
+              <div className={`user-badge ${isOwner ? 'owner' : 'player'}`} style={{marginTop:6,fontSize:11,padding:'3px 8px'}}>
+                {isOwner ? '🏟️ Stadium Owner' : '⚽ Player'}
+              </div>
+            </div>
+          </div>
+
+          <nav className="settings-nav">
+            {sections.map(s => (
+              <button key={s.id}
+                className={`settings-nav-item ${activeSection === s.id ? 'active' : ''}`}
+                onClick={() => setActiveSection(s.id)}>
+                <span className="settings-nav-icon">{s.icon}</span>
+                <span>{s.label}</span>
+                {activeSection === s.id && <span style={{marginLeft:'auto',color:'var(--green)',fontSize:10}}>▶</span>}
+              </button>
+            ))}
+          </nav>
+
+          <button className="settings-logout-btn" onClick={onLogout}>
+            <IconLogout /> Sign Out
+          </button>
+        </aside>
+
+        {/* ── Main content ── */}
+        <main className="settings-main">
+
+          {/* ── Profile Photo section ── */}
+          {activeSection === 'profile' && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <h2 className="settings-section-title">Profile Photo</h2>
+                <p className="settings-section-sub">Your photo appears in chats, the players list, and group members.</p>
+              </div>
+
+              <div className="settings-avatar-area">
+                <div style={{position:'relative'}}>
+                  <div
+                    style={{cursor: user.avatarUrl ? 'zoom-in' : 'default'}}
+                    onClick={() => user.avatarUrl && setZoomPhoto({name: user.name, src: user.avatarUrl})}>
+                    <Avatar name={user.name} src={user.avatarUrl} size={120}/>
+                  </div>
+                  {uploading && (
+                    <div style={{position:'absolute',inset:0,borderRadius:'50%',background:'rgba(0,0,0,0.55)',
+                      display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <span className="spinner" style={{borderTopColor:'#fff'}}/>
+                    </div>
+                  )}
+                  {uploadSuccess && (
+                    <div style={{position:'absolute',bottom:4,right:4,width:28,height:28,borderRadius:'50%',
+                      background:'var(--green)',display:'flex',alignItems:'center',justifyContent:'center',
+                      boxShadow:'0 2px 8px rgba(0,0,0,0.4)'}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#041a09" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                  )}
+                </div>
+
+                <div className="settings-avatar-actions">
+                  <p style={{color:'var(--text-muted)',fontSize:13,marginBottom:16,lineHeight:1.6}}>
+                    Upload a clear photo of your face so teammates can recognize you.<br/>
+                    JPEG, PNG or WebP · Max 8MB
+                  </p>
+                  <input id="settings-avatar-input" type="file" accept="image/jpeg,image/png,image/webp"
+                    style={{display:'none'}} onChange={handleAvatarFile}/>
+                  <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                    <button className="submit-btn" style={{width:'auto',padding:'10px 24px'}}
+                      onClick={() => document.getElementById('settings-avatar-input').click()}
+                      disabled={uploading}>
+                      {uploading
+                        ? <><span className="spinner sm"/> Uploading…</>
+                        : uploadSuccess
+                        ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg> Saved!</>
+                        : '📷 ' + (user.avatarUrl ? 'Change Photo' : 'Upload Photo')
+                      }
+                    </button>
+                    {user.avatarUrl && (
+                      <button className="btn-secondary" style={{padding:'10px 20px'}} onClick={handleRemoveAvatar}>
+                        Remove Photo
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* How your photo looks in the app */}
+              <div className="settings-preview-card">
+                <p className="settings-preview-label">Preview — how others see you</p>
+                <div className="settings-preview-row">
+                  <div className="settings-preview-item">
+                    <Avatar name={user.name} src={user.avatarUrl} size={42}/>
+                    <span style={{fontSize:12,color:'var(--text-muted)',marginTop:4}}>Chat list</span>
+                  </div>
+                  <div className="settings-preview-item">
+                    <Avatar name={user.name} src={user.avatarUrl} size={30}/>
+                    <span style={{fontSize:12,color:'var(--text-muted)',marginTop:4}}>Messages</span>
+                  </div>
+                  <div className="settings-preview-item">
+                    <Avatar name={user.name} src={user.avatarUrl} size={56}/>
+                    <span style={{fontSize:12,color:'var(--text-muted)',marginTop:4}}>Profile</span>
+                  </div>
+                  <div className="settings-preview-item">
+                    <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--bg2)',
+                      border:'1px solid var(--border)',borderRadius:10,padding:'8px 12px'}}>
+                      <Avatar name={user.name} src={user.avatarUrl} size={34}/>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:'var(--text)'}}>{user.name}</div>
+                        <div style={{fontSize:11,color:'var(--text-muted)'}}>Hey! Ready to play? ⚽</div>
+                      </div>
+                    </div>
+                    <span style={{fontSize:12,color:'var(--text-muted)',marginTop:4}}>Message bubble</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Availability section (players only) ── */}
+          {activeSection === 'availability' && !isOwner && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <h2 className="settings-section-title">My Availability</h2>
+                <p className="settings-section-sub">Set the days and times you're free to play. Other players can see this and invite you to matches.</p>
+              </div>
+              <AvailabilityEditor/>
+            </div>
+          )}
+
+          {/* ── Account section ── */}
+          {activeSection === 'account' && (
+            <div className="settings-section">
+              <div className="settings-section-header">
+                <h2 className="settings-section-title">Account</h2>
+                <p className="settings-section-sub">Manage your account details and data.</p>
+              </div>
+
+              <div className="settings-info-card">
+                <div className="settings-info-row">
+                  <span className="settings-info-label">Full Name</span>
+                  <span className="settings-info-value">{user.name}</span>
+                </div>
+                <div className="settings-info-row">
+                  <span className="settings-info-label">Email</span>
+                  <span className="settings-info-value">{user.email}</span>
+                </div>
+                <div className="settings-info-row">
+                  <span className="settings-info-label">Account Type</span>
+                  <span className="settings-info-value">{isOwner ? 'Stadium Owner' : 'Player'}</span>
+                </div>
+                {user.city && <div className="settings-info-row">
+                  <span className="settings-info-label">City</span>
+                  <span className="settings-info-value">{user.city}</span>
+                </div>}
+                {user.country && <div className="settings-info-row">
+                  <span className="settings-info-label">Country</span>
+                  <span className="settings-info-value">{user.country}</span>
+                </div>}
+              </div>
+
+              <div className="settings-danger-card">
+                <div>
+                  <div style={{fontWeight:600,color:'#f87171',marginBottom:4}}>Delete Account</div>
+                  <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.5}}>
+                    Permanently removes your profile, all data, messages, {isOwner ? 'stadiums, and bookings.' : 'bookings, and friend connections.'}
+                  </div>
+                </div>
+                <button className="action-btn danger" style={{whiteSpace:'nowrap',padding:'10px 20px',fontSize:13}}
+                  onClick={() => setShowDeleteAccount(true)}>
+                  <IconTrash/> Delete Account
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+// ── Availability Editor (inline, no modal) ─────────────────────────
+function AvailabilityEditor() {
+  const [slots, setSlots] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(null);
+  const [saved, setSaved] = useState(null);
+  const TIMES = [];
+  for (let h = 6; h <= 23; h++) { TIMES.push(`${String(h).padStart(2,'0')}:00`); TIMES.push(`${String(h).padStart(2,'0')}:30`); }
+
+  useEffect(() => {
+    apiCall('/players/availability').then(data => {
+      const map = {};
+      data.forEach(s => {
+        if (!map[s.day_of_week]) map[s.day_of_week] = [];
+        map[s.day_of_week].push({ start: s.slot_start.slice(0,5), end: s.slot_end.slice(0,5) });
+      });
+      setSlots(map); setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const addSlot = (day) => setSlots(prev => ({ ...prev, [day]: [...(prev[day]||[]), { start: '08:00', end: '10:00' }] }));
+  const removeSlot = (day, idx) => setSlots(prev => { const arr = [...(prev[day]||[])]; arr.splice(idx,1); return { ...prev, [day]: arr }; });
+  const updateSlot = (day, idx, field, val) => setSlots(prev => { const arr = [...(prev[day]||[])]; arr[idx] = { ...arr[idx], [field]: val }; return { ...prev, [day]: arr }; });
+
+  const saveDay = async (day) => {
+    setSaving(day); setSaved(null);
+    try {
+      const daySlots = (slots[day]||[]).map(s => ({ slot_start: s.start, slot_end: s.end }));
+      await apiCall(`/players/availability/${day}`, 'PUT', { slots: daySlots });
+      setSaved(day); setTimeout(() => setSaved(null), 2500);
+    } catch {}
+    setSaving(null);
+  };
+
+  if (loading) return <div className="center-spinner"><span className="spinner large"/></div>;
+
+  return (
+    <div className="avail-editor-wrap">
+      {DAYS.map((day, i) => {
+        const daySlots = slots[i] || [];
+        const hasSlots = daySlots.length > 0;
+        return (
+          <div key={i} className={`avail-editor-day-card ${hasSlots ? 'has-slots' : ''}`}>
+            <div className="avail-editor-day-header">
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <div className={`avail-day-dot ${hasSlots ? 'active' : ''}`}/>
+                <span className="avail-day-name">{day}</span>
+                {hasSlots && <span className="avail-slot-count">{daySlots.length} slot{daySlots.length > 1 ? 's' : ''}</span>}
+              </div>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                {saved === i && (
+                  <span style={{fontSize:12,color:'var(--green)',display:'flex',alignItems:'center',gap:4}}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>Saved
+                  </span>
+                )}
+                <button className="action-btn success" style={{fontSize:12,padding:'5px 12px'}}
+                  onClick={() => saveDay(i)} disabled={saving === i}>
+                  {saving === i ? <span className="spinner sm"/> : 'Save'}
+                </button>
+                <button className="action-btn primary" style={{fontSize:12,padding:'5px 12px'}}
+                  onClick={() => addSlot(i)}>+ Add</button>
+              </div>
+            </div>
+            {daySlots.length === 0 && (
+              <p style={{fontSize:13,color:'var(--text-muted)',margin:'8px 0 4px',fontStyle:'italic'}}>Not available — tap + Add to set times</p>
+            )}
+            <div style={{display:'flex',flexDirection:'column',gap:8,marginTop: daySlots.length ? 10 : 0}}>
+              {daySlots.map((s, j) => (
+                <div key={j} className="slot-row">
+                  <select className="time-select" value={s.start} onChange={e => updateSlot(i,j,'start',e.target.value)}>
+                    {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <span style={{color:'var(--text-muted)',fontSize:13,flexShrink:0}}>→</span>
+                  <select className="time-select" value={s.end} onChange={e => updateSlot(i,j,'end',e.target.value)}>
+                    {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  <button className="action-btn danger-sm" style={{flexShrink:0}} onClick={() => removeSlot(i,j)}><IconX/></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════════
 //  DELETE ACCOUNT MODAL
 // ══════════════════════════════════════════════════════════════════
@@ -1999,7 +2825,7 @@ function DeleteAccountModal({ onClose, onDeleted }) {
   );
 }
 
-function HomePage({ user, onLogout }) {
+function HomePage({ user, onAvatarChange, onLogout }) {
   const isOwner = user.userType==="stadium_owner";
   const [page, setPage] = useState("home");
   const [chatPartner, setChatPartner] = useState(null);
@@ -2007,6 +2833,8 @@ function HomePage({ user, onLogout }) {
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
+  // Pass user update down to SettingsPage
+  const handleAvatarChange = (update) => onAvatarChange(update);
 
   const openChat = (partner) => {
     setChatPartner(partner);
@@ -2044,8 +2872,9 @@ function HomePage({ user, onLogout }) {
           {!isOwner&&<button className={`nav-link ${page==="players"?"active":""}`} onClick={()=>setPage("players")}><IconUsers/><span>Players</span></button>}
           <button className={`nav-link ${page==="chat"?"active":""}`} onClick={()=>{ setChatPartner(null); setPage("chat"); }}><IconChat/><span>Chat</span></button>
           {!isOwner&&<button className={`nav-link ${page==="groups"?"active":""}`} onClick={()=>setPage("groups")}><IconGroup/><span>Groups</span></button>}
+          <button className={`nav-link ${page==="settings"?"active":""}`} onClick={()=>setPage("settings")}><IconSettings/><span>Settings</span></button>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ position: 'relative' }} ref={notifRef}>
             <button className={`nav-notif-btn ${showNotifs ? 'active' : ''}`} onClick={() => setShowNotifs(!showNotifs)}>
               <IconBell filled={unreadNotifs > 0} />
@@ -2058,30 +2887,66 @@ function HomePage({ user, onLogout }) {
               />
             )}
           </div>
+          {/* Avatar in navbar → Settings */}
+          <div onClick={()=>setPage('settings')} style={{cursor:'pointer'}} title="Settings">
+            <Avatar name={user.name} src={user.avatarUrl} size={34}/>
+          </div>
           <button className="logout-btn" onClick={onLogout}><IconLogout /> Sign out</button>
         </div>
       </nav>
       {page==="home"&&(
-        <div className="home-content">
-          <div className="welcome-card">
-            <div className={`user-badge ${isOwner?"owner":"player"}`}>{isOwner?<IconStadium/>:<IconBall/>}<span>{isOwner?"Stadium Owner":"Player"}</span></div>
-            <h1 className="welcome-title">Hello, <span className="name-highlight">{user.name}</span> 👋</h1>
-            <p className="welcome-sub">{isOwner?"Manage your stadiums, set schedules, and handle bookings.":"Browse stadiums, chat with friends, and organize your next match."}</p>
-            <div className="info-chips">
-              <div className="chip"><span className="chip-label">Account Type</span><span className="chip-value">{isOwner?"Stadium Owner":"Player"}</span></div>
-              <div className="chip"><span className="chip-label">Email</span><span className="chip-value">{user.email}</span></div>
-              {user.city&&<div className="chip"><span className="chip-label">City</span><span className="chip-value">{user.city}</span></div>}{user.country&&<div className="chip"><span className="chip-label">Country</span><span className="chip-value">{user.country}</span></div>}
+        <div className="dashboard">
+          <div className="dash-hero">
+            <div className="dash-hero-left">
+              <div className="dash-hero-avatar" onClick={()=>setPage('settings')} title="Settings">
+                <Avatar name={user.name} src={user.avatarUrl} size={64}/>
+              </div>
+              <div>
+                <div className={`user-badge ${isOwner?"owner":"player"}`}>{isOwner?<IconStadium/>:<IconBall/>}<span>{isOwner?"Stadium Owner":"Player"}</span></div>
+                <h1 className="dash-greeting">Welcome back, <span className="name-highlight">{user.name.split(' ')[0]}</span></h1>
+                <p className="dash-sub">{isOwner?"Your dashboard — manage venues, schedules & bookings.":"Find stadiums, connect with players, organise your next match."}</p>
+              </div>
             </div>
-            <div className="home-quick-actions">
-              <button className="cta-btn" onClick={()=>setPage("stadiums")}><IconStadium/>{isOwner?"Manage Stadiums":"Browse Stadiums"}</button>
-              {!isOwner&&<button className="cta-btn secondary" onClick={()=>setPage("groups")}><IconGroup/> My Groups</button>}
-              {!isOwner&&<button className="cta-btn secondary" onClick={()=>setPage("chat")}><IconChat/> Messages</button>}
+            <div className="dash-hero-meta">
+              {user.city&&<span className="dash-meta-chip"><IconMapPin/>{user.city}{user.country?`, ${user.country}`:''}</span>}
+              <span className="dash-meta-chip" style={{fontSize:12,opacity:0.65}}>{user.email}</span>
             </div>
-            <div className="danger-zone">
-              <button className="delete-account-btn" onClick={()=>setShowDeleteAccount(true)}>
-                <IconTrash /> Delete My Account
-              </button>
-            </div>
+          </div>
+          <div className="dash-actions-grid">
+            <button className="dash-action-card primary" onClick={()=>setPage("stadiums")}>
+              <div className="dac-icon"><IconStadium/></div>
+              <div className="dac-body"><span className="dac-title">{isOwner?"My Stadiums":"Browse Stadiums"}</span><span className="dac-desc">{isOwner?"Manage venues & schedules":"Find and book pitches near you"}</span></div>
+              <div className="dac-arrow">→</div>
+            </button>
+            {!isOwner&&<button className="dash-action-card" onClick={()=>setPage("bookings")}>
+              <div className="dac-icon"><IconBookmark/></div>
+              <div className="dac-body"><span className="dac-title">My Bookings</span><span className="dac-desc">View & manage upcoming slots</span></div>
+              <div className="dac-arrow">→</div>
+            </button>}
+            <button className="dash-action-card" onClick={()=>{ setChatPartner(null); setPage("chat"); }}>
+              <div className="dac-icon"><IconChat/></div>
+              <div className="dac-body"><span className="dac-title">Messages</span><span className="dac-desc">{isOwner?"Chat with players":"Chat with friends & owners"}</span></div>
+              <div className="dac-arrow">→</div>
+            </button>
+            {!isOwner&&<button className="dash-action-card" onClick={()=>setPage("groups")}>
+              <div className="dac-icon"><IconGroup/></div>
+              <div className="dac-body"><span className="dac-title">Groups</span><span className="dac-desc">Organise team matches together</span></div>
+              <div className="dac-arrow">→</div>
+            </button>}
+            {!isOwner&&<button className="dash-action-card" onClick={()=>setPage("players")}>
+              <div className="dac-icon"><IconUsers/></div>
+              <div className="dac-body"><span className="dac-title">Players</span><span className="dac-desc">Discover & connect with players</span></div>
+              <div className="dac-arrow">→</div>
+            </button>}
+            <button className="dash-action-card" onClick={()=>setPage("settings")}>
+              <div className="dac-icon"><IconSettings/></div>
+              <div className="dac-body"><span className="dac-title">Settings</span><span className="dac-desc">Profile, photo{!isOwner?", availability":""} & account</span></div>
+              <div className="dac-arrow">→</div>
+            </button>
+          </div>
+          <div className="dash-tip">
+            <div className="dash-tip-dot"/>
+            <span>{isOwner?"💡 Configure your stadium schedules so players can book instantly.":"💡 Set your availability so group admins can find the perfect match time."}</span>
           </div>
         </div>
       )}
@@ -2090,6 +2955,7 @@ function HomePage({ user, onLogout }) {
       {page==="players"&&!isOwner&&<div className="page-content"><div className="page-header"><h2 className="page-title">Players</h2><p className="page-sub">Search and connect with other players</p></div><PlayersPage user={user}/></div>}
       {page==="chat"&&<div className="page-content"><ChatPage user={user} initialPartner={chatPartner}/></div>}
       {page==="groups"&&!isOwner&&<div className="page-content"><GroupsPage user={user}/></div>}
+      {page==="settings"&&<div className="page-content" style={{maxWidth:860}}><SettingsPage user={user} onAvatarChange={handleAvatarChange} onLogout={onLogout} isOwner={isOwner}/></div>}
       {showDeleteAccount&&<DeleteAccountModal onClose={()=>setShowDeleteAccount(false)} onDeleted={onLogout}/>}
     </div>
   );
@@ -2109,5 +2975,5 @@ export default function App() {
   },[]);
 
   if(checking) return <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:"#0a0f0a"}}><div className="spinner large"/></div>;
-  return user?<HomePage user={user} onLogout={()=>{localStorage.removeItem("token");setUser(null);}}/>:<AuthPage onLogin={setUser}/>;
+  return user?<HomePage user={user} onAvatarChange={u=>setUser(prev=>({...prev,...u}))} onLogout={()=>{localStorage.removeItem("token");setUser(null);}}/>:<AuthPage onLogin={setUser}/>;
 }

@@ -3,12 +3,23 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('./db');
+const multer = require('multer');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Multer: memory storage, images saved as base64 in DB
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('Only image files allowed'));
+  }
+});
 
 // ── Middleware ───────────────────────────────────────────────────
 const authenticate = (req, res, next) => {
@@ -54,7 +65,7 @@ app.post('/api/auth/signup', async (req, res) => {
     );
     const u = r.rows[0];
     const token = jwt.sign({ id: u.id, userType: u.user_type }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.status(201).json({ token, user: { id: u.id, name: u.name, email: u.email, userType: u.user_type, city: u.city, country: u.country, avatarUrl: null } });
+    res.status(201).json({ token, user: { id: u.id, name: u.name, email: u.email, userType: u.user_type } });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -67,7 +78,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!u || !(await bcrypt.compare(password, u.password)))
       return res.status(401).json({ error: 'Invalid credentials' });
     const token = jwt.sign({ id: u.id, userType: u.user_type }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: u.id, name: u.name, email: u.email, userType: u.user_type, city: u.city, country: u.country, avatarUrl: u.avatar_url } });
+    res.json({ token, user: { id: u.id, name: u.name, email: u.email, userType: u.user_type } });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
@@ -128,6 +139,24 @@ app.delete('/api/auth/delete-account', authenticate, async (req, res) => {
 });
 
 
+// ── Upload profile picture ────────────────────────────────────────
+app.post('/api/auth/avatar', authenticate, upload.single('avatar'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image provided' });
+  try {
+    const b64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+    await pool.query('UPDATE users SET avatar_url=$1 WHERE id=$2', [b64, req.user.id]);
+    res.json({ avatar_url: b64 });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// ── Remove profile picture ─────────────────────────────────────────
+app.delete('/api/auth/avatar', authenticate, async (req, res) => {
+  try {
+    await pool.query('UPDATE users SET avatar_url=NULL WHERE id=$1', [req.user.id]);
+    res.json({ success: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
 // ══════════════════════════════════════════════════════════════════
 //  FRIENDS
 // ══════════════════════════════════════════════════════════════════
@@ -179,14 +208,6 @@ app.post('/api/friends/request', authenticate, async (req, res) => {
        ON CONFLICT (requester_id,addressee_id) DO UPDATE SET status='pending',updated_at=NOW() RETURNING *`,
       [req.user.id, addresseeId]
     );
-    // Notify addressee of new friend request
-    pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]).then(sndr => {
-      const name = sndr.rows[0]?.name || 'Someone';
-      pool.query(
-        `INSERT INTO notifications (user_id, type, message, related_id, related_type) VALUES ($1,'friend_request',$2,$3,'friendship')`,
-        [addresseeId, `👥 ${name} sent you a friend request`, r.rows[0].id]
-      ).catch(()=>{});
-    }).catch(()=>{});
     res.status(201).json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -201,16 +222,6 @@ app.patch('/api/friends/:requesterId/respond', authenticate, async (req, res) =>
       [action === 'accept' ? 'accepted' : 'declined', req.params.requesterId, req.user.id]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
-    // Notify requester when accepted
-    if (action === 'accept') {
-      pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]).then(u => {
-        const name = u.rows[0]?.name || 'Someone';
-        pool.query(
-          `INSERT INTO notifications (user_id, type, message, related_id, related_type) VALUES ($1,'friend_accepted',$2,$3,'friendship')`,
-          [req.params.requesterId, `✅ ${name} accepted your friend request`, r.rows[0].id]
-        ).catch(()=>{});
-      }).catch(()=>{});
-    }
     res.json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -348,7 +359,7 @@ app.get('/api/stadiums', authenticate, async (req, res) => {
       }
     }
     const where = conditions.join(' AND ');
-    const sql = `SELECT DISTINCT s.*, u.name AS owner_name, u.avatar_url AS owner_avatar FROM stadiums s JOIN users u ON s.owner_id=u.id ${joinClause} WHERE ${where} ORDER BY s.created_at DESC LIMIT 50`;
+    const sql = `SELECT DISTINCT s.*, u.name AS owner_name FROM stadiums s JOIN users u ON s.owner_id=u.id ${joinClause} WHERE ${where} ORDER BY s.created_at DESC LIMIT 50`;
     const r = await pool.query(sql, params);
     res.json(r.rows);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
@@ -413,25 +424,16 @@ app.get('/api/stadiums/:id/slots', authenticate, async (req, res) => {
       [req.params.id, day]
     );
 
-    // Get confirmed bookings — these actually shrink the available window
-    // Pending bookings do NOT block the slot until owner confirms
+    // Get confirmed/pending bookings for this day to show taken ranges
     const bookingsRes = await pool.query(
       `SELECT booked_start, booked_end, status FROM bookings
-       WHERE stadium_id=$1 AND day_of_week=$2 AND status='confirmed'`,
-      [req.params.id, day]
-    );
-
-    // Pending bookings shown separately — players can see others are interested
-    const pendingRes = await pool.query(
-      `SELECT booked_start, booked_end FROM bookings
-       WHERE stadium_id=$1 AND day_of_week=$2 AND status='pending'`,
+       WHERE stadium_id=$1 AND day_of_week=$2 AND status IN ('pending','confirmed')`,
       [req.params.id, day]
     );
 
     res.json({
       slots: scheduleRes.rows,
-      bookings: bookingsRes.rows,       // confirmed only — used to shrink free windows
-      pending: pendingRes.rows          // pending only — shown as "someone interested" indicator
+      bookings: bookingsRes.rows
     });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
@@ -467,15 +469,14 @@ app.post('/api/bookings', authenticate, async (req, res) => {
 
     const parentSlot = slotRes.rows[0];
 
-    // Only block if a CONFIRMED booking already covers this slot
-    // Pending bookings are allowed to overlap — owner decides who gets it
+    // Check no overlapping confirmed/pending booking exists
     const conflict = await pool.query(
       `SELECT id FROM bookings
-       WHERE stadium_id=$1 AND day_of_week=$2 AND status='confirmed'
+       WHERE stadium_id=$1 AND day_of_week=$2 AND status IN ('pending','confirmed')
          AND booked_start < $4::time AND booked_end > $3::time`,
       [stadium_id, day_of_week, booked_start, booked_end]
     );
-    if (conflict.rows.length) return res.status(409).json({ error: 'This slot has already been confirmed for another booking' });
+    if (conflict.rows.length) return res.status(409).json({ error: 'This time range overlaps with an existing booking' });
 
     const r = await pool.query(
       `INSERT INTO bookings (stadium_id,player_id,day_of_week,booked_start,booked_end,parent_schedule_id,note)
@@ -547,27 +548,6 @@ app.patch('/api/bookings/:id/cancel', authenticate, async (req, res) => {
       await restoreSlot(client, b);
     }
 
-    // Notify the owner that the player cancelled
-    try {
-      const infoRes = await client.query(
-        `SELECT u.name AS player_name, s.name AS stadium_name, s.owner_id
-         FROM users u, stadiums s WHERE u.id=$1 AND s.id=$2`,
-        [b.player_id, b.stadium_id]
-      );
-      if (infoRes.rows.length) {
-        const { player_name, stadium_name, owner_id } = infoRes.rows[0];
-        const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][b.day_of_week];
-        const timeStr = `${String(b.booked_start).slice(0,5)}–${String(b.booked_end).slice(0,5)}`;
-        await client.query(
-          `INSERT INTO notifications (user_id, type, message, related_id, related_type)
-           VALUES ($1,'booking_cancelled',$2,$3,'booking')`,
-          [owner_id,
-           `❌ ${player_name} cancelled their booking at ${stadium_name} on ${dayName} (${timeStr})`,
-           b.id]
-        );
-      }
-    } catch (notifErr) { console.error('Cancel notif error:', notifErr); }
-
     await client.query('COMMIT');
     res.json(bRes.rows[0]);
   } catch (err) {
@@ -585,10 +565,7 @@ app.get('/api/bookings/stadium/:stadiumId', authenticate, requireOwner, async (r
     const r = await pool.query(
       `SELECT b.*, u.name AS player_name, u.email AS player_email
        FROM bookings b JOIN users u ON b.player_id=u.id
-       WHERE b.stadium_id=$1
-       ORDER BY
-         CASE b.status WHEN 'pending' THEN 0 WHEN 'confirmed' THEN 1 ELSE 2 END,
-         b.created_at DESC`,
+       WHERE b.stadium_id=$1 ORDER BY b.day_of_week, b.booked_start, b.created_at DESC`,
       [req.params.stadiumId]
     );
     res.json(r.rows);
@@ -625,73 +602,12 @@ app.patch('/api/bookings/:id/status', authenticate, requireOwner, async (req, re
     );
 
     if (status === 'confirmed') {
-      // Find other pending bookings that overlap this confirmed slot — auto-cancel them
-      const overlapping = await client.query(
-        `SELECT b.*, u.name AS player_name FROM bookings b
-         JOIN users u ON b.player_id = u.id
-         WHERE b.stadium_id=$1 AND b.day_of_week=$2 AND b.status='pending' AND b.id != $3
-           AND b.booked_start < $5::time AND b.booked_end > $4::time`,
-        [b.stadium_id, b.day_of_week, b.id, b.booked_start, b.booked_end]
-      );
-
-      // Auto-cancel each conflicting pending booking and notify those players
-      for (const ob of overlapping.rows) {
-        await client.query(
-          `UPDATE bookings SET status='cancelled', updated_at=NOW() WHERE id=$1`,
-          [ob.id]
-        );
-        const stRes = await client.query('SELECT name FROM stadiums WHERE id=$1', [b.stadium_id]);
-        const stadiumName = stRes.rows[0]?.name || 'the stadium';
-        const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][ob.day_of_week];
-        const timeStr = `${String(ob.booked_start).slice(0,5)}–${String(ob.booked_end).slice(0,5)}`;
-        await client.query(
-          `INSERT INTO notifications (user_id, type, message, related_id, related_type)
-           VALUES ($1,'booking_cancelled_by_owner',$2,$3,'booking')`,
-          [ob.player_id,
-           `❌ Your booking at ${stadiumName} on ${dayName} (${timeStr}) was cancelled — another booking was confirmed for that slot`,
-           ob.id]
-        );
-      }
-
       // Split the parent slot
       await splitSlot(client, b);
-
-      // If there were conflicts, include a warning in the response
-      if (overlapping.rows.length > 0) {
-        const names = overlapping.rows.map(r => r.player_name).join(', ');
-        await client.query('COMMIT');
-        return res.json({ ...updated.rows[0], _warning: `${overlapping.rows.length} overlapping pending booking(s) were auto-cancelled (${names}). Those players have been notified.` });
-      }
     } else if (status === 'cancelled') {
-      // Only restore the schedule slot if the booking was confirmed
-      // Pending bookings never touched the schedule, so nothing to restore
-      if (b.status === 'confirmed') {
-        await restoreSlot(client, b);
-      }
+      // Restore: re-merge the cancelled range back into the schedule
+      await restoreSlot(client, b);
     }
-
-    // Notify the player of the owner's decision
-    try {
-      const infoRes = await client.query(
-        `SELECT u.name AS owner_name, s.name AS stadium_name
-         FROM users u, stadiums s WHERE u.id=$1 AND s.id=$2`,
-        [req.user.id, b.stadium_id]
-      );
-      if (infoRes.rows.length) {
-        const { owner_name, stadium_name } = infoRes.rows[0];
-        const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][b.day_of_week];
-        const timeStr = `${String(b.booked_start).slice(0,5)}–${String(b.booked_end).slice(0,5)}`;
-        const msg = status === 'confirmed'
-          ? `✅ ${owner_name} confirmed your booking at ${stadium_name} on ${dayName} (${timeStr})`
-          : `❌ ${owner_name} cancelled your booking at ${stadium_name} on ${dayName} (${timeStr})`;
-        const notifType = status === 'confirmed' ? 'booking_confirmed' : 'booking_cancelled_by_owner';
-        await client.query(
-          `INSERT INTO notifications (user_id, type, message, related_id, related_type)
-           VALUES ($1,$2,$3,$4,'booking')`,
-          [b.player_id, notifType, msg, b.id]
-        );
-      }
-    } catch (notifErr) { console.error('Status notif error:', notifErr); }
 
     await client.query('COMMIT');
     res.json(updated.rows[0]);
@@ -702,20 +618,7 @@ app.patch('/api/bookings/:id/status', authenticate, requireOwner, async (req, re
   } finally { client.release(); }
 });
 
-// Owner: delete a booking from the list (hard delete — only for cancelled/completed records)
-app.delete('/api/bookings/:id', authenticate, requireOwner, async (req, res) => {
-  try {
-    const r = await pool.query(
-      `SELECT b.* FROM bookings b
-       JOIN stadiums s ON b.stadium_id=s.id
-       WHERE b.id=$1 AND s.owner_id=$2`,
-      [req.params.id, req.user.id]
-    );
-    if (!r.rows.length) return res.status(404).json({ error: 'Booking not found' });
-    await pool.query('DELETE FROM bookings WHERE id=$1', [req.params.id]);
-    res.json({ success: true });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
-});
+// ── Slot splitting logic ─────────────────────────────────────────
 // Called when owner confirms a booking.
 // Deletes the parent slot and inserts up to 2 new slots for the remaining time.
 // e.g. parent: 10:00-19:00, booked: 12:00-14:00
@@ -799,17 +702,7 @@ async function restoreSlot(client, booking) {
   const bStart = toMin(booking.booked_start);
   const bEnd = toMin(booking.booked_end);
 
-  // If the original parent slot still exists, the booking was never confirmed
-  // (splitSlot was never called), so there is nothing to restore — bail out.
-  if (booking.parent_schedule_id) {
-    const parentCheck = await client.query(
-      'SELECT id FROM stadium_schedule WHERE id=$1',
-      [booking.parent_schedule_id]
-    );
-    if (parentCheck.rows.length) return; // parent untouched — nothing to restore
-  }
-
-  // Find adjacent slots to potentially merge with (after a split was done)
+  // Find adjacent slots to potentially merge with
   const adjacentRes = await client.query(
     `SELECT * FROM stadium_schedule
      WHERE stadium_id=$1 AND day_of_week=$2
@@ -842,81 +735,6 @@ async function restoreSlot(client, booking) {
     [stadiumId, day, fromMin(mergedStart), fromMin(mergedEnd)]
   );
 }
-
-// ── Default schedule template ────────────────────────────────────
-// GET  /api/stadiums/:id/default-schedule  → load saved template
-app.get('/api/stadiums/:id/default-schedule', authenticate, requireOwner, async (req, res) => {
-  try {
-    const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-    if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
-    const r = await pool.query(
-      'SELECT * FROM stadium_default_schedule WHERE stadium_id=$1 ORDER BY day_of_week, slot_start',
-      [req.params.id]
-    );
-    res.json(r.rows);
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
-});
-
-// PUT  /api/stadiums/:id/default-schedule  → save current schedule as default template
-app.put('/api/stadiums/:id/default-schedule', authenticate, requireOwner, async (req, res) => {
-  const { slots } = req.body;
-  if (!Array.isArray(slots)) return res.status(400).json({ error: 'slots required' });
-  const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('DELETE FROM stadium_default_schedule WHERE stadium_id=$1', [req.params.id]);
-    for (const s of slots) {
-      await client.query(
-        `INSERT INTO stadium_default_schedule (stadium_id, day_of_week, slot_start, slot_end)
-         VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-        [req.params.id, s.day_of_week, s.slot_start, s.slot_end]
-      );
-    }
-    await client.query('COMMIT');
-    res.json({ success: true });
-  } catch (err) { await client.query('ROLLBACK'); console.error(err); res.status(500).json({ error: 'Server error' }); }
-  finally { client.release(); }
-});
-
-// POST /api/stadiums/:id/reset-schedule  → reset a specific day (or all days) to default template
-app.post('/api/stadiums/:id/reset-schedule', authenticate, requireOwner, async (req, res) => {
-  const { day } = req.body; // number 0-6 or undefined/null = reset all days
-  const hasDay = day !== undefined && day !== null;
-  const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
-  if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    // Load default template
-    const defRes = await client.query(
-      hasDay
-        ? 'SELECT * FROM stadium_default_schedule WHERE stadium_id=$1 AND day_of_week=$2'
-        : 'SELECT * FROM stadium_default_schedule WHERE stadium_id=$1',
-      hasDay ? [req.params.id, day] : [req.params.id]
-    );
-    if (!defRes.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'No default schedule saved yet' }); }
-    // Delete existing live slots for requested day(s)
-    await client.query(
-      hasDay
-        ? 'DELETE FROM stadium_schedule WHERE stadium_id=$1 AND day_of_week=$2'
-        : 'DELETE FROM stadium_schedule WHERE stadium_id=$1',
-      hasDay ? [req.params.id, day] : [req.params.id]
-    );
-    // Reinsert from default template
-    for (const s of defRes.rows) {
-      await client.query(
-        `INSERT INTO stadium_schedule (stadium_id, day_of_week, slot_start, slot_end, is_available)
-         VALUES ($1,$2,$3,$4,TRUE)`,
-        [req.params.id, s.day_of_week, s.slot_start, s.slot_end]
-      );
-    }
-    await client.query('COMMIT');
-    res.json({ success: true, restored: defRes.rows.length });
-  } catch (err) { await client.query('ROLLBACK'); console.error(err); res.status(500).json({ error: 'Server error' }); }
-  finally { client.release(); }
-});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
@@ -1030,7 +848,7 @@ app.get('/api/messages/conversations', authenticate, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT DISTINCT ON (partner_id)
-         partner_id, partner_name, partner_city, partner_country, partner_avatar,
+         partner_id, partner_name, partner_city, partner_country,
          last_message, last_message_at, unread_count
        FROM (
          SELECT
@@ -1063,9 +881,7 @@ app.get('/api/messages/:partnerId', authenticate, async (req, res) => {
     const r = await pool.query(
       `SELECT m.*, u.name AS sender_name, u.avatar_url AS sender_avatar FROM messages m
        JOIN users u ON m.sender_id=u.id
-       WHERE ((m.sender_id=$1 AND m.receiver_id=$2 AND m.deleted_for_sender=FALSE)
-           OR (m.sender_id=$2 AND m.receiver_id=$1 AND m.deleted_for_receiver IS NOT TRUE))
-         AND m.deleted_for_all=FALSE
+       WHERE (m.sender_id=$1 AND m.receiver_id=$2) OR (m.sender_id=$2 AND m.receiver_id=$1)
        ORDER BY m.created_at ASC LIMIT 200`,
       [req.user.id, req.params.partnerId]
     );
@@ -1095,44 +911,6 @@ app.post('/api/messages', authenticate, async (req, res) => {
   } finally { client.release(); }
 });
 
-// Delete a direct message (for me only or for everyone)
-app.delete('/api/messages/:id', authenticate, async (req, res) => {
-  const { scope } = req.body; // 'me' | 'all'
-  try {
-    const r = await pool.query('SELECT * FROM messages WHERE id=$1', [req.params.id]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
-    const msg = r.rows[0];
-    if (scope === 'all') {
-      if (msg.sender_id !== req.user.id) return res.status(403).json({ error: 'Only sender can delete for everyone' });
-      await pool.query('UPDATE messages SET deleted_for_all=TRUE WHERE id=$1', [req.params.id]);
-    } else {
-      if (msg.sender_id !== req.user.id && msg.receiver_id !== req.user.id)
-        return res.status(403).json({ error: 'Not your message' });
-      if (msg.sender_id === req.user.id) await pool.query('UPDATE messages SET deleted_for_sender=TRUE WHERE id=$1', [req.params.id]);
-      else await pool.query('UPDATE messages SET deleted_for_receiver=TRUE WHERE id=$1', [req.params.id]);
-    }
-    res.json({ success: true });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
-});
-
-// Delete a group message (for me only or for everyone)
-app.delete('/api/groups/:groupId/messages/:id', authenticate, async (req, res) => {
-  const { scope } = req.body; // 'me' | 'all'
-  try {
-    const r = await pool.query('SELECT * FROM group_messages WHERE id=$1 AND group_id=$2', [req.params.id, req.params.groupId]);
-    if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
-    const msg = r.rows[0];
-    if (scope === 'all') {
-      if (msg.sender_id !== req.user.id) return res.status(403).json({ error: 'Only sender can delete for everyone' });
-      await pool.query('UPDATE group_messages SET deleted_for_all=TRUE WHERE id=$1', [req.params.id]);
-    } else {
-      if (msg.sender_id !== req.user.id) return res.status(403).json({ error: 'Not your message' });
-      await pool.query('UPDATE group_messages SET deleted_for_sender=TRUE WHERE id=$1', [req.params.id]);
-    }
-    res.json({ success: true });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
-});
-
 // ══════════════════════════════════════════════════════════════════
 //  GROUPS / MATCHES
 // ══════════════════════════════════════════════════════════════════
@@ -1152,7 +930,7 @@ app.post('/api/groups', authenticate, async (req, res) => {
     const group = r.rows[0];
     // Creator auto-joins as admin
     await client.query(
-      `INSERT INTO group_members (group_id, user_id, role, joined_at) VALUES ($1,$2,'admin',NOW())`,
+      `INSERT INTO group_members (group_id, user_id, role) VALUES ($1,$2,'admin')`,
       [group.id, req.user.id]
     );
     await client.query('COMMIT');
@@ -1254,31 +1032,6 @@ app.patch('/api/groups/:id/respond', authenticate, async (req, res) => {
 });
 
 // Leave group
-// Admin kicks a member out
-app.delete('/api/groups/:id/members/:userId', authenticate, async (req, res) => {
-  try {
-    const admin = await pool.query(
-      `SELECT id FROM group_members WHERE group_id=$1 AND user_id=$2 AND role='admin' AND status='active'`,
-      [req.params.id, req.user.id]
-    );
-    if (!admin.rows.length) return res.status(403).json({ error: 'Only admins can remove members' });
-    if (req.params.userId == req.user.id) return res.status(400).json({ error: 'Cannot kick yourself' });
-    await pool.query(
-      `UPDATE group_members SET status='kicked' WHERE group_id=$1 AND user_id=$2`,
-      [req.params.id, req.params.userId]
-    );
-    const [grpRes, adminRes] = await Promise.all([
-      pool.query('SELECT name FROM groups WHERE id=$1', [req.params.id]),
-      pool.query('SELECT name FROM users WHERE id=$1', [req.user.id])
-    ]);
-    pool.query(
-      `INSERT INTO notifications (user_id, type, message, related_id, related_type) VALUES ($1,'group_kicked',$2,$3,'group')`,
-      [req.params.userId, `You were removed from "${grpRes.rows[0]?.name}" by ${adminRes.rows[0]?.name}`, req.params.id]
-    ).catch(()=>{});
-    res.json({ success: true });
-  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
-});
-
 // Edit group (admin only)
 app.put('/api/groups/:id', authenticate, async (req, res) => {
   const { name, description, stadium_id, match_day, match_start, match_end, max_players } = req.body;
@@ -1339,26 +1092,11 @@ app.get('/api/groups/:id/messages', authenticate, async (req, res) => {
       `UPDATE group_members SET last_read_at=NOW() WHERE group_id=$1 AND user_id=$2`,
       [req.params.id, req.user.id]
     );
-    // Get when this user joined (to only show messages from that point on)
-    const memRes = await pool.query(
-      `SELECT joined_at FROM group_members WHERE group_id=$1 AND user_id=$2 AND status='active'`,
-      [req.params.id, req.user.id]
-    );
-    const joinedAt = memRes.rows[0]?.joined_at || new Date(0);
     const r = await pool.query(
-      `SELECT gm.id, gm.group_id, gm.sender_id, gm.created_at,
-              CASE WHEN gm.deleted_for_all THEN NULL
-                   WHEN gm.deleted_for_sender AND gm.sender_id=$2 THEN NULL
-                   ELSE gm.content END AS content,
-              gm.deleted_for_all,
-              (gm.deleted_for_sender AND gm.sender_id=$2) AS hidden_for_me,
-              u.name AS sender_name, u.avatar_url AS sender_avatar
-       FROM group_messages gm
+      `SELECT gm.*, u.name AS sender_name, u.avatar_url AS sender_avatar FROM group_messages gm
        JOIN users u ON gm.sender_id=u.id
-       WHERE gm.group_id=$1 AND gm.created_at >= $3
-         AND NOT (gm.deleted_for_sender AND gm.sender_id=$2)
-       ORDER BY gm.created_at ASC LIMIT 500`,
-      [req.params.id, req.user.id, joinedAt]
+       WHERE gm.group_id=$1 ORDER BY gm.created_at ASC LIMIT 200`,
+      [req.params.id]
     );
     res.json(r.rows);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
@@ -1374,32 +1112,10 @@ app.post('/api/groups/:id/messages', authenticate, async (req, res) => {
       [req.params.id, req.user.id]
     );
     if (!mem.rows.length) return res.status(403).json({ error: 'Not a member' });
-
     const r = await pool.query(
       `INSERT INTO group_messages (group_id, sender_id, content) VALUES ($1,$2,$3) RETURNING *`,
       [req.params.id, req.user.id, content.trim()]
     );
-
-    // Notify all other active members (skip sender)
-    const [groupRes, senderRes, membersRes] = await Promise.all([
-      pool.query('SELECT name FROM groups WHERE id=$1', [req.params.id]),
-      pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]),
-      pool.query(
-        `SELECT user_id FROM group_members WHERE group_id=$1 AND user_id!=$2 AND status='active'`,
-        [req.params.id, req.user.id]
-      )
-    ]);
-    const groupName = groupRes.rows[0]?.name || 'Group';
-    const senderName = senderRes.rows[0]?.name || 'Someone';
-    const preview = content.trim().length > 60 ? content.trim().slice(0, 60) + '…' : content.trim();
-
-    if (membersRes.rows.length) {
-      const notifValues = membersRes.rows.map(m => `(${m.user_id},'group_message','💬 ${senderName} in ${groupName}: ${preview.replace(/'/g,"''")}',${req.params.id},'group')`).join(',');
-      pool.query(
-        `INSERT INTO notifications (user_id, type, message, related_id, related_type) VALUES ${notifValues}`
-      ).catch(() => {});
-    }
-
     res.status(201).json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
