@@ -1,0 +1,313 @@
+const express = require("express");
+const router = express.Router();
+const pool = require("../db");
+const { authenticate, requireOwner } = require("../middleware");
+
+
+
+router.get('/mine', authenticate, requireOwner, async (req, res) => {
+
+  try {
+    const r = await pool.query(
+      'SELECT * FROM stadiums WHERE owner_id=$1 ORDER BY created_at DESC', [req.user.id]);
+    res.json(r.rows);
+  } 
+
+  catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+
+
+router.post('/', authenticate, requireOwner, async (req, res) => {
+
+  const { name, city, country, description, price_per_hour, capacity, surface, phone, open_time, close_time, image_url } = req.body;
+  if (!name || !city || !price_per_hour) 
+    return res.status(400).json({ error: 'Name, city and price are required' });
+
+  try {
+    const r = await pool.query(
+      `INSERT INTO stadiums (owner_id,name,city,country,description,price_per_hour,capacity,surface,phone,open_time,close_time,image_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [req.user.id, name, city, country || null, description || null, price_per_hour, capacity || null,
+       surface || 'grass', phone || null, open_time || '08:00', close_time || '22:00', image_url || null]
+    );
+    res.status(201).json(r.rows[0]);
+  }
+   catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+
+
+router.put('/:id', authenticate, requireOwner, async (req, res) => {
+  const { name, city, country, description, price_per_hour, capacity, surface, phone, open_time, close_time, is_active, image_url } = req.body;
+  try {
+    const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+    if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
+    const r = await pool.query(
+      `UPDATE stadiums SET name=$1,city=$2,country=$3,description=$4,price_per_hour=$5,capacity=$6,surface=$7,
+         phone=$8,open_time=$9,close_time=$10,is_active=$11,image_url=$12,updated_at=NOW()
+       WHERE id=$13 AND owner_id=$14 RETURNING *`,
+      [name, city, country || null, description || null, price_per_hour, capacity || null, surface || 'grass',
+       phone || null, open_time || '08:00', close_time || '22:00',
+       is_active !== undefined ? is_active : true, image_url || null, req.params.id, req.user.id]
+    );
+    res.json(r.rows[0]);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+
+
+router.delete('/:id', authenticate, requireOwner, async (req, res) => {
+  try {
+    const r = await pool.query('DELETE FROM stadiums WHERE id=$1 AND owner_id=$2 RETURNING id', [req.params.id, req.user.id]);
+    if (!r.rows.length) return res.status(404).json({ error: 'Stadium not found' });
+    res.json({ success: true });
+  } 
+
+  catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+
+
+router.patch('/:id/toggle', authenticate, requireOwner, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'UPDATE stadiums SET is_active=NOT is_active,updated_at=NOW() WHERE id=$1 AND owner_id=$2 RETURNING *',
+      [req.params.id, req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Stadium not found' });
+    res.json(r.rows[0]);
+  } 
+  
+  catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+
+// Browse stadiums (players) — filter by name, city, country, day, time range
+router.get('/', authenticate, async (req, res) => {
+
+  const q = (req.query.q || '').trim();
+  const city = (req.query.city || '').trim();
+  const country = (req.query.country || '').trim();
+  const day = req.query.day !== undefined && req.query.day !== '' ? parseInt(req.query.day) : null;
+  const slotStart = req.query.slot_start || null;
+  const slotEnd = req.query.slot_end || null;
+
+  try {
+    const conditions = ['s.is_active=TRUE'];
+    const params = [];
+    let idx = 1;
+    if (q) { conditions.push(`(s.name ILIKE $${idx} OR s.city ILIKE $${idx} OR s.country ILIKE $${idx})`); params.push(`%${q}%`); idx++; }
+    if (city) { conditions.push(`s.city ILIKE $${idx}`); params.push(`%${city}%`); idx++; }
+    if (country) { conditions.push(`s.country ILIKE $${idx}`); params.push(`%${country}%`); idx++; }
+    let joinClause = '';
+
+    if (day !== null) {
+      joinClause = `JOIN stadium_schedule ss ON ss.stadium_id=s.id AND ss.day_of_week=$${idx} AND ss.is_available=TRUE`;
+      params.push(day); idx++;
+      if (slotStart && slotEnd) {
+        joinClause += ` AND ss.slot_start<=$${idx}::time AND ss.slot_end>=$${idx+1}::time`;
+        params.push(slotStart, slotEnd); idx += 2;
+      }
+    }
+
+    const where = conditions.join(' AND ');
+    const sql = `SELECT DISTINCT s.*, u.name AS owner_name, u.avatar_url AS owner_avatar FROM stadiums s JOIN users u ON s.owner_id=u.id ${joinClause} WHERE ${where} ORDER BY s.created_at DESC LIMIT 50`;
+    const r = await pool.query(sql, params);
+    res.json(r.rows);
+  } 
+  
+  catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// ══════════════════════════════════════════════════════════════════
+//  SCHEDULE
+// ══════════════════════════════════════════════════════════════════
+
+router.get('/:id/schedule', authenticate, async (req, res) => {
+  try {
+    const r = await pool.query(
+      'SELECT * FROM stadium_schedule WHERE stadium_id=$1 ORDER BY day_of_week,slot_start',
+      [req.params.id]
+    );
+    res.json(r.rows);
+  } 
+  
+  catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+
+
+router.put('/:id/schedule', authenticate, requireOwner, async (req, res) => {
+  const { slots } = req.body;
+
+  if (!Array.isArray(slots))
+     return res.status(400).json({ error: 'slots must be an array' });
+
+  const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+
+  if (!check.rows.length) 
+    return res.status(404).json({ error: 'Stadium not found' });
+
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+    await client.query('DELETE FROM stadium_schedule WHERE stadium_id=$1', [req.params.id]);
+
+    for (const s of slots) {
+      await client.query(
+        `INSERT INTO stadium_schedule (stadium_id,day_of_week,slot_start,slot_end,is_available)
+         VALUES ($1,$2,$3,$4,$5)`,
+        [req.params.id, s.day_of_week, s.slot_start, s.slot_end, s.is_available !== false]
+      );
+
+    }
+
+    await client.query('COMMIT');
+    const r = await client.query(
+      'SELECT * FROM stadium_schedule WHERE stadium_id=$1 ORDER BY day_of_week,slot_start',
+      [req.params.id]
+    );
+
+    res.json(r.rows);
+  } 
+  
+  catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  } finally { client.release(); }
+});
+
+// Get available slots for a stadium on a given day
+// Returns real schedule slots with overlap info for the player booking UI
+// GET /api/stadiums/:id/slots?day=1
+router.get('/:id/slots', authenticate, async (req, res) => {
+  const day = parseInt(req.query.day);
+  if (isNaN(day)) return res.status(400).json({ error: 'day is required' });
+  try {
+    // Get available schedule slots
+    const scheduleRes = await pool.query(
+      `SELECT * FROM stadium_schedule
+       WHERE stadium_id=$1 AND day_of_week=$2 AND is_available=TRUE
+       ORDER BY slot_start`,
+      [req.params.id, day]
+    );
+
+    // Get confirmed bookings — these actually shrink the available window
+    // Pending bookings do NOT block the slot until owner confirms
+    const bookingsRes = await pool.query(
+      `SELECT booked_start, booked_end, status FROM bookings
+       WHERE stadium_id=$1 AND day_of_week=$2 AND status='confirmed'`,
+      [req.params.id, day]
+    );
+
+    // Pending bookings shown separately — players can see others are interested
+    const pendingRes = await pool.query(
+      `SELECT booked_start, booked_end FROM bookings
+       WHERE stadium_id=$1 AND day_of_week=$2 AND status='pending'`,
+      [req.params.id, day]
+    );
+
+    res.json({
+      slots: scheduleRes.rows,
+      bookings: bookingsRes.rows,       // confirmed only — used to shrink free windows
+      pending: pendingRes.rows          // pending only — shown as "someone interested" indicator
+    });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+
+router.get('/:id/default-schedule', authenticate, requireOwner, async (req, res) => {
+  try {
+    const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+    if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
+    const r = await pool.query(
+      'SELECT * FROM stadium_default_schedule WHERE stadium_id=$1 ORDER BY day_of_week, slot_start',
+      [req.params.id]
+    );
+    res.json(r.rows);
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
+// PUT  /api/stadiums/:id/default-schedule  → save current schedule as default template
+router.put('/:id/default-schedule', authenticate, requireOwner, async (req, res) => {
+
+  const { slots } = req.body;
+  if (!Array.isArray(slots)) return res.status(400).json({ error: 'slots required' });
+
+  const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
+
+  const client = await pool.connect();
+
+  try {
+
+    await client.query('BEGIN');
+    await client.query('DELETE FROM stadium_default_schedule WHERE stadium_id=$1', [req.params.id]);
+    for (const s of slots) {
+      await client.query(
+        `INSERT INTO stadium_default_schedule (stadium_id, day_of_week, slot_start, slot_end)
+         VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
+        [req.params.id, s.day_of_week, s.slot_start, s.slot_end]
+      );
+    }
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } 
+  
+  catch (err) { await client.query('ROLLBACK'); console.error(err); res.status(500).json({ error: 'Server error' }); }
+  
+  finally { client.release(); }
+});
+
+
+
+// POST /api/stadiums/:id/reset-schedule  → reset a specific day (or all days) to default template
+router.post('/:id/reset-schedule', authenticate, requireOwner, async (req, res) => {
+
+  const { day } = req.body; // number 0-6 or undefined/null = reset all days
+  const hasDay = day !== undefined && day !== null;
+  const check = await pool.query('SELECT id FROM stadiums WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  if (!check.rows.length) return res.status(404).json({ error: 'Stadium not found' });
+
+  const client = await pool.connect();
+
+  try {
+
+    await client.query('BEGIN');
+    // Load default template
+    const defRes = await client.query(
+      hasDay
+        ? 'SELECT * FROM stadium_default_schedule WHERE stadium_id=$1 AND day_of_week=$2'
+        : 'SELECT * FROM stadium_default_schedule WHERE stadium_id=$1',
+      hasDay ? [req.params.id, day] : [req.params.id]
+    );
+    
+    if (!defRes.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'No default schedule saved yet' }); }
+    // Delete existing live slots for requested day(s)
+    await client.query(
+      hasDay
+        ? 'DELETE FROM stadium_schedule WHERE stadium_id=$1 AND day_of_week=$2'
+        : 'DELETE FROM stadium_schedule WHERE stadium_id=$1',
+      hasDay ? [req.params.id, day] : [req.params.id]
+    );
+    // Reinsert from default template
+    for (const s of defRes.rows) {
+      await client.query(
+        `INSERT INTO stadium_schedule (stadium_id, day_of_week, slot_start, slot_end, is_available)
+         VALUES ($1,$2,$3,$4,TRUE)`,
+        [req.params.id, s.day_of_week, s.slot_start, s.slot_end]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ success: true, restored: defRes.rows.length });
+  } 
+  
+  catch (err) { await client.query('ROLLBACK'); console.error(err); res.status(500).json({ error: 'Server error' }); }
+  finally { client.release(); }
+});
+
+module.exports = router;
