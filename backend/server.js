@@ -15,6 +15,9 @@ app.use('/api/players',       require('./routes/players'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/messages',      require('./routes/messages'));
 app.use('/api/groups',        require('./routes/groups'));
+app.use('/api/match-results',           require('./routes/matchResults'));
+app.use('/api/ai',                      require('./routes/ai'));
+app.use('/api/stadiums/:id/reviews',   require('./routes/reviews'));
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

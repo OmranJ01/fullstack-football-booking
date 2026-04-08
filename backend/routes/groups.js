@@ -231,6 +231,27 @@ router.get('/:id/messages', authenticate, async (req, res) => {
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
 });
 
+// Delete a group message (for me only or for everyone)
+router.delete('/:id/messages/:msgId', authenticate, async (req, res) => {
+  const { scope } = req.body; // 'me' | 'all'
+  try {
+    const r = await pool.query(
+      'SELECT * FROM group_messages WHERE id=$1 AND group_id=$2',
+      [req.params.msgId, req.params.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
+    const msg = r.rows[0];
+    if (scope === 'all') {
+      if (msg.sender_id !== req.user.id) return res.status(403).json({ error: 'Only sender can delete for everyone' });
+      await pool.query('UPDATE group_messages SET deleted_for_all=TRUE WHERE id=$1', [req.params.msgId]);
+    } else {
+      if (msg.sender_id !== req.user.id) return res.status(403).json({ error: 'Not your message' });
+      await pool.query('UPDATE group_messages SET deleted_for_sender=TRUE WHERE id=$1', [req.params.msgId]);
+    }
+    res.json({ success: true });
+  } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
+});
+
 router.post('/:id/messages', authenticate, async (req, res) => {
   const { content } = req.body;
   if (!content?.trim()) return res.status(400).json({ error: 'content required' });

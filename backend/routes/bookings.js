@@ -76,6 +76,20 @@ router.post('/', authenticate, async (req, res) => {
 
 
 
+// Owner: resolve booking id → stadium_id (for notification redirect)
+router.get('/stadium-for-notif/:bookingId', authenticate, requireOwner, async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT b.stadium_id FROM bookings b
+       JOIN stadiums s ON b.stadium_id=s.id
+       WHERE b.id=$1 AND s.owner_id=$2`,
+      [req.params.bookingId, req.user.id]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ stadium_id: r.rows[0].stadium_id });
+  } catch (err) { res.status(500).json({ error: 'Server error' }); }
+});
+
 // Player: view my bookings
 router.get('/mine', authenticate, async (req, res) => {
   try {
@@ -287,6 +301,7 @@ router.delete('/:id', authenticate, requireOwner, async (req, res) => {
       [req.params.id, req.user.id]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Booking not found' });
+    if (r.rows[0].status !== 'cancelled') return res.status(400).json({ error: 'Only cancelled bookings can be removed' });
     await pool.query('DELETE FROM bookings WHERE id=$1', [req.params.id]);
     res.json({ success: true });
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }

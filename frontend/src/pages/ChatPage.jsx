@@ -145,8 +145,18 @@ function ChatWindow({ user, partner, onBack }) {
       <form className="message-input-row" onSubmit={sendMessage}>
         <input value={newMsg} onChange={e => setNewMsg(e.target.value)}
           placeholder="Type a message..." className="message-input" disabled={sending} />
-        <button type="submit" className="send-btn" disabled={!newMsg.trim() || sending}>
-          {sending ? <span className="spinner sm" /> : <IconSend />}
+        <button type="submit" disabled={!newMsg.trim() || sending}
+          style={{
+            flexShrink: 0, width: 44, height: 44, borderRadius: '50%',
+            background: !newMsg.trim() || sending ? 'rgba(96,165,250,0.2)' : '#3b82f6',
+            border: 'none', cursor: !newMsg.trim() || sending ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'background 0.2s', color: '#fff',
+          }}>
+          {sending
+            ? <span className="spinner sm" />
+            : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          }
         </button>
       </form>
     </>
@@ -239,7 +249,7 @@ function ChatPage({ user, initialPartner }) {
           {filtered.map(c => (
             <div key={c.partner_id}
               className={`conv-item ${activeConv?.partner_id === c.partner_id ? 'active' : ''}`}
-              onClick={() => { setActiveConv(c); loadContacts(); }}>
+              onClick={() => setActiveConv(c)}>
               <Avatar name={c.partner_name} src={c.partner_avatar} size={42} />
               <div className="conv-info">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

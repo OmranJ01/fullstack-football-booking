@@ -112,7 +112,10 @@ router.get('/', authenticate, async (req, res) => {
     }
 
     const where = conditions.join(' AND ');
-    const sql = `SELECT DISTINCT s.*, u.name AS owner_name, u.avatar_url AS owner_avatar FROM stadiums s JOIN users u ON s.owner_id=u.id ${joinClause} WHERE ${where} ORDER BY s.created_at DESC LIMIT 50`;
+    const sql = `SELECT DISTINCT s.*, u.name AS owner_name, u.avatar_url AS owner_avatar,
+       (SELECT ROUND(AVG(r.rating),1) FROM stadium_reviews r WHERE r.stadium_id=s.id) AS avg_rating,
+       (SELECT COUNT(*)::int FROM stadium_reviews r WHERE r.stadium_id=s.id) AS review_count
+       FROM stadiums s JOIN users u ON s.owner_id=u.id ${joinClause} WHERE ${where} ORDER BY s.created_at DESC LIMIT 50`;
     const r = await pool.query(sql, params);
     res.json(r.rows);
   } 

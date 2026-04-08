@@ -57,12 +57,13 @@ router.get('/me', authenticate, async (req, res) => {
   } catch (err) { res.status(500).json({ error: 'Server error' }); }
 });
 
-// Upload/update profile picture (base64)
+// Upload/update profile picture (base64), or remove it by sending null
 router.put('/avatar', authenticate, async (req, res) => {
   const { imageBase64 } = req.body;
-  if (!imageBase64) return res.status(400).json({ error: 'No image provided' });
-  // Limit ~2MB base64
-  if (imageBase64.length > 2800000) return res.status(400).json({ error: 'Image too large (max 2MB)' });
+  if (imageBase64 === undefined) return res.status(400).json({ error: 'No image provided' });
+  // null = remove avatar
+  if (imageBase64 !== null && imageBase64.length > 2800000)
+    return res.status(400).json({ error: 'Image too large (max 2MB)' });
   try {
     await pool.query('UPDATE users SET avatar_url=$1 WHERE id=$2', [imageBase64, req.user.id]);
     res.json({ avatarUrl: imageBase64 });

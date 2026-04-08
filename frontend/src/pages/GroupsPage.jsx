@@ -1,21 +1,28 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiCall, DAYS, DAYS_SHORT, SURFACES, SURFACE_COLOR, STATUS_COLOR, STATUS_BG, toMin, fromMin, hoursInRange, computeFreeWindows, validEndTimes, validStartTimes, IconBall, IconStadium, IconLogout, IconSettings, IconEye, IconUsers, IconHome, IconSearch, IconCheck, IconX, IconUserPlus, IconUserMinus, IconMapPin, IconClock, IconPlus, IconEdit, IconTrash, IconCalendar, IconPhone, IconDollar, IconUsers2, IconToggle, IconFilter, IconBell, IconChat, IconGroup, IconSend, IconArrowLeft, IconShield, IconBookmark, IconArrow, Avatar, ImagePicker, PhotoZoomModal } from "../utils";
-function GroupsPage({ user }) {
+function GroupsPage({ user, initialGroupId }) {
   const [tab, setTab] = useState('my');
   const [groups, setGroups] = useState([]);
   const [invites, setInvites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [activeGroup, setActiveGroup] = useState(null);
+  const didAutoOpen = useRef(false);
 
   const loadGroups = useCallback(async () => {
     setLoading(true);
     try {
       const [g, inv] = await Promise.all([apiCall('/groups/mine'), apiCall('/groups/invites/pending')]);
       setGroups(g); setInvites(inv);
+      if (initialGroupId && !didAutoOpen.current) {
+        didAutoOpen.current = true;
+        const target = g.find(x => x.id === Number(initialGroupId));
+        if (target) setActiveGroup(target);
+        else setTab('invites');
+      }
     } catch {}
     setLoading(false);
-  }, []);
+  }, [initialGroupId]);
 
   useEffect(() => { loadGroups(); }, [loadGroups]);
 
@@ -415,6 +422,8 @@ function GroupDetail({ group, user, onBack }) {
       <div className="sub-tabs" style={{ borderBottom: '1px solid var(--border)', marginBottom: 0 }}>
         <button className={`sub-tab ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}><IconChat /> Chat</button>
         <button className={`sub-tab ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}><IconUsers /> Members</button>
+        <button className={`sub-tab ${activeTab === 'matches' ? 'active' : ''}`} onClick={() => setActiveTab('matches')}><IconCalendar /> Matches</button>
+        <button className={`sub-tab ${activeTab === 'findtime' ? 'active' : ''}`} onClick={() => setActiveTab('findtime')}><IconClock /> Find Time</button>
       </div>
 
       {activeTab === 'chat' && (
@@ -473,8 +482,15 @@ function GroupDetail({ group, user, onBack }) {
           </div>
           <form className="message-input-row" onSubmit={sendMessage}>
             <input value={newMsg} onChange={e => setNewMsg(e.target.value)} placeholder="Message the group..." className="message-input" disabled={sending} />
-            <button type="submit" className="send-btn" disabled={!newMsg.trim() || sending}>
-              {sending ? <span className="spinner sm" /> : <IconSend />}
+            <button type="submit" disabled={!newMsg.trim() || sending}
+              style={{
+                flexShrink: 0, width: 44, height: 44, borderRadius: '50%',
+                background: !newMsg.trim() || sending ? 'rgba(96,165,250,0.2)' : '#3b82f6',
+                border: 'none', cursor: !newMsg.trim() || sending ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.2s', color: '#fff',
+              }}>
+              {sending ? <span className="spinner sm" /> : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
             </button>
           </form>
         </div>
@@ -532,6 +548,14 @@ function GroupDetail({ group, user, onBack }) {
           )}
         </div>
       )}
+      {activeTab === 'matches' && (
+        <MatchesTab group={currentGroup} user={user} isAdmin={isAdmin} />
+      )}
+
+      {activeTab === 'findtime' && (
+        <FindTimeTab group={currentGroup} />
+      )}
+
       {showEdit && (
         <EditGroupModal
           group={currentGroup}
@@ -630,5 +654,379 @@ function EditGroupModal({ group, onClose, onSaved }) {
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════
+//  MATCHES TAB
+// ══════════════════════════════════════════════════════════════════
+function StarDisplay({ rating, max = 10 }) {
+  const filled = Math.round((rating / max) * 5);
+  return (
+    <span style={{ display: 'inline-flex', gap: 1 }}>
+      {[1,2,3,4,5].map(i => (
+        <span key={i} style={{ fontSize: 13, color: i <= filled ? '#facc15' : '#374151' }}>★</span>
+      ))}
+    </span>
+  );
+}
+
+const POSITIONS = ['Goalkeeper', 'Defender', 'Midfielder', 'Forward', 'Winger'];
+
+function MatchesTab({ group, user, isAdmin }) {
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showLog, setShowLog] = useState(false);
+  const [editMatch, setEditMatch] = useState(null);
+  const [statsMatch, setStatsMatch] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setMatches(await apiCall(`/match-results/groups/${group.id}`)); } catch {}
+    setLoading(false);
+  }, [group.id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const deleteMatch = async (id) => {
+    if (!window.confirm('Delete this match?')) return;
+    try { await apiCall(`/match-results/${id}`, 'DELETE'); await load(); } catch (e) { alert(e.message); }
+  };
+
+  if (loading) return <div className="center-spinner" style={{ padding: 40 }}><span className="spinner large" /></div>;
+
+  return (
+    <div className="tab-content">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{matches.length} match{matches.length !== 1 ? 'es' : ''} logged</span>
+        {isAdmin && (
+          <button className="action-btn primary" onClick={() => { setEditMatch(null); setShowLog(true); }}>
+            <IconPlus /> Log Match
+          </button>
+        )}
+      </div>
+
+      {matches.length === 0 && (
+        <div className="empty-state">
+          <div className="empty-icon"><IconCalendar /></div>
+          <p className="empty-title">No matches yet</p>
+          <p>{isAdmin ? 'Log your first match result to start tracking stats.' : 'The group admin can log match results here.'}</p>
+        </div>
+      )}
+
+      <div className="booking-list">
+        {matches.map(m => {
+          const myStats = (m.player_stats || []).find(s => s.player_id === user.id);
+          return (
+            <div key={m.id} className="booking-card" style={{ flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{
+                      fontSize: 22, fontWeight: 800, color: '#4ade80',
+                      background: 'rgba(74,222,128,0.1)', border: '1px solid rgba(74,222,128,0.25)',
+                      borderRadius: 10, padding: '4px 14px',
+                    }}>
+                      {m.score_a} – {m.score_b}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{new Date(m.played_on).toLocaleDateString()}</div>
+                      {m.notes && <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{m.notes}"</div>}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button className="action-btn primary" style={{ fontSize: 12 }} onClick={() => setStatsMatch(m)}>
+                    {myStats ? '✏️ Edit Stats' : '+ Log My Stats'}
+                  </button>
+                  {isAdmin && (
+                    <>
+                      <button className="action-btn muted" style={{ fontSize: 12 }} onClick={() => { setEditMatch(m); setShowLog(true); }}>
+                        <IconEdit />
+                      </button>
+                      <button className="action-btn danger" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => deleteMatch(m.id)}>
+                        <IconTrash />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {(m.player_stats || []).length > 0 && (
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Player Stats</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {(m.player_stats || []).map(s => (
+                      <div key={s.player_id} style={{
+                        background: 'var(--surface2, rgba(255,255,255,0.04))',
+                        border: '1px solid var(--border)', borderRadius: 10,
+                        padding: '8px 12px', fontSize: 12, display: 'flex', gap: 10, alignItems: 'center',
+                        ...(s.player_id === user.id ? { borderColor: 'rgba(74,222,128,0.4)' } : {})
+                      }}>
+                        <span style={{ fontWeight: 600 }}>{s.player_name}{s.player_id === user.id ? ' (you)' : ''}</span>
+                        {s.position && <span style={{ color: '#c084fc' }}>{s.position}</span>}
+                        <span style={{ color: '#60a5fa' }}>⚽ {s.goals}</span>
+                        <span style={{ color: '#fb923c' }}>🅰️ {s.assists}</span>
+                        {s.rating && <span><StarDisplay rating={s.rating} /> <span style={{ color: '#facc15', fontSize: 11 }}>{s.rating}/10</span></span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {showLog && (
+        <LogMatchModal
+          match={editMatch}
+          groupId={group.id}
+          onClose={() => { setShowLog(false); setEditMatch(null); }}
+          onSaved={() => { setShowLog(false); setEditMatch(null); load(); }}
+        />
+      )}
+      {statsMatch && (
+        <LogStatsModal
+          match={statsMatch}
+          userId={user.id}
+          onClose={() => setStatsMatch(null)}
+          onSaved={() => { setStatsMatch(null); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function LogMatchModal({ match, groupId, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    played_on: match?.played_on?.slice(0, 10) || new Date().toISOString().slice(0, 10),
+    score_a: match?.score_a ?? 0,
+    score_b: match?.score_b ?? 0,
+    notes: match?.notes || '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault(); setLoading(true); setError('');
+    try {
+      if (match) {
+        await apiCall(`/match-results/${match.id}`, 'PATCH', form);
+      } else {
+        await apiCall(`/match-results/groups/${groupId}`, 'POST', form);
+      }
+      onSaved();
+    } catch (err) { setError(err.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <h2 className="modal-title">{match ? 'Edit Match' : 'Log Match Result'}</h2>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <form onSubmit={submit} className="modal-form">
+          <div className="field"><label>Date *</label><input name="played_on" type="date" value={form.played_on} onChange={handle} required /></div>
+          <div className="form-row">
+            <div className="field"><label>Team A Score</label><input name="score_a" type="number" min="0" value={form.score_a} onChange={handle} /></div>
+            <div className="field"><label>Team B Score</label><input name="score_b" type="number" min="0" value={form.score_b} onChange={handle} /></div>
+          </div>
+          <div className="field"><label>Notes <span className="optional">(optional)</span></label><input name="notes" value={form.notes} onChange={handle} placeholder="e.g. Rainy game, intense match..." /></div>
+          {error && <div className="error-msg">{error}</div>}
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="submit-btn" style={{ flex: 1 }} disabled={loading}>
+              {loading ? <span className="spinner" /> : match ? 'Save Changes' : 'Log Match'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function LogStatsModal({ match, userId, onClose, onSaved }) {
+  const existing = (match.player_stats || []).find(s => s.player_id === userId);
+  const [form, setForm] = useState({
+    goals: existing?.goals ?? 0,
+    assists: existing?.assists ?? 0,
+    position: existing?.position || '',
+    rating: existing?.rating || '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const handle = e => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const submit = async (e) => {
+    e.preventDefault(); setLoading(true); setError('');
+    try {
+      await apiCall(`/match-results/${match.id}/stats`, 'POST', {
+        goals: parseInt(form.goals) || 0,
+        assists: parseInt(form.assists) || 0,
+        position: form.position || null,
+        rating: form.rating ? parseFloat(form.rating) : null,
+      });
+      onSaved();
+    } catch (err) { setError(err.message); }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div>
+            <h2 className="modal-title">My Stats</h2>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>
+              {new Date(match.played_on).toLocaleDateString()} · {match.score_a} – {match.score_b}
+            </p>
+          </div>
+          <button className="modal-close" onClick={onClose}><IconX /></button>
+        </div>
+        <form onSubmit={submit} className="modal-form">
+          <div className="form-row">
+            <div className="field"><label>Goals</label><input name="goals" type="number" min="0" value={form.goals} onChange={handle} /></div>
+            <div className="field"><label>Assists</label><input name="assists" type="number" min="0" value={form.assists} onChange={handle} /></div>
+          </div>
+          <div className="field"><label>Position <span className="optional">(optional)</span></label>
+            <select name="position" value={form.position} onChange={handle}>
+              <option value="">Select position</option>
+              {POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label>Personal Rating <span className="optional">(1–10, optional)</span></label>
+            <input name="rating" type="number" min="1" max="10" step="0.5" value={form.rating} onChange={handle} placeholder="e.g. 7.5" />
+          </div>
+          {error && <div className="error-msg">{error}</div>}
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="submit-btn" style={{ flex: 1 }} disabled={loading}>
+              {loading ? <span className="spinner" /> : 'Save Stats'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  FIND TIME TAB (Smart Scheduling)
+// ══════════════════════════════════════════════════════════════════
+function FindTimeTab({ group }) {
+  const [stadiums, setStadiums] = useState([]);
+  const [selectedStadium, setSelectedStadium] = useState(group.stadium_id ? String(group.stadium_id) : '');
+  const [suggestions, setSuggestions] = useState(null);
+  const [totalMembers, setTotalMembers] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const DAYS_LOCAL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+  useEffect(() => {
+    apiCall('/stadiums').then(setStadiums).catch(() => {});
+  }, []);
+
+  const findTime = async () => {
+    if (!selectedStadium) { setError('Please select a stadium first'); return; }
+    setLoading(true); setError(''); setSuggestions(null);
+    try {
+      const d = await apiCall(`/match-results/groups/${group.id}/smart-schedule?stadium_id=${selectedStadium}`);
+      setSuggestions(d.suggestions);
+      setTotalMembers(d.totalMembers);
+    } catch (err) { setError(err.message); }
+    setLoading(false);
+  };
+
+  const pct = (n) => Math.round((n / totalMembers) * 100);
+  const barColor = (n) => {
+    const p = pct(n);
+    if (p >= 80) return '#4ade80';
+    if (p >= 50) return '#facc15';
+    return '#fb923c';
+  };
+
+  return (
+    <div className="tab-content">
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: 20, marginBottom: 20 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Smart Match Scheduler</h3>
+        <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
+          Finds the best time slots where the most group members are free AND the stadium has availability.
+        </p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="field" style={{ flex: 1, minWidth: 200, margin: 0 }}>
+            <label>Stadium</label>
+            <select value={selectedStadium} onChange={e => setSelectedStadium(e.target.value)}>
+              <option value="">Select a stadium…</option>
+              {stadiums.map(s => (
+                <option key={s.id} value={s.id}>{s.name} — {[s.city, s.country].filter(Boolean).join(', ')}</option>
+              ))}
+            </select>
+          </div>
+          <button className="submit-btn" style={{ width: 'auto', padding: '10px 20px' }} onClick={findTime} disabled={loading || !selectedStadium}>
+            {loading ? <span className="spinner" /> : '🔍 Find Best Times'}
+          </button>
+        </div>
+        {error && <div className="error-msg" style={{ marginTop: 10 }}>{error}</div>}
+      </div>
+
+      {suggestions !== null && (
+        <>
+          {suggestions.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon"><IconClock /></div>
+              <p className="empty-title">No overlapping slots found</p>
+              <p>Make sure group members have set their availability in Settings, and the stadium has schedule slots configured.</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
+                Showing top {suggestions.length} suggestions · {totalMembers} total members
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {suggestions.map((s, i) => (
+                  <div key={i} style={{
+                    background: 'var(--surface)', border: '1px solid var(--border)',
+                    borderRadius: 12, padding: '14px 18px',
+                    borderLeft: `3px solid ${barColor(s.available_count)}`,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>
+                          {DAYS_LOCAL[s.day]} · {s.start} – {s.end}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                          {s.available_members.map(m => m.name).join(', ')}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: barColor(s.available_count) }}>
+                          {s.available_count}/{totalMembers}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>members free</div>
+                      </div>
+                    </div>
+                    {/* Availability bar */}
+                    <div style={{ marginTop: 10, height: 6, background: 'var(--border)', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 3,
+                        width: `${pct(s.available_count)}%`,
+                        background: barColor(s.available_count),
+                        transition: 'width 0.3s',
+                      }} />
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{pct(s.available_count)}% availability</div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 export { GroupsPage, CreateGroupModal, GroupDetail, EditGroupModal };

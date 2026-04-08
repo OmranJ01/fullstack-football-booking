@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiCall, DAYS, DAYS_SHORT, SURFACES, SURFACE_COLOR, STATUS_COLOR, STATUS_BG, toMin, fromMin, hoursInRange, computeFreeWindows, validEndTimes, validStartTimes, IconBall, IconStadium, IconLogout, IconSettings, IconEye, IconUsers, IconHome, IconSearch, IconCheck, IconX, IconUserPlus, IconUserMinus, IconMapPin, IconClock, IconPlus, IconEdit, IconTrash, IconCalendar, IconPhone, IconDollar, IconUsers2, IconToggle, IconFilter, IconBell, IconChat, IconGroup, IconSend, IconArrowLeft, IconShield, IconBookmark, IconArrow, Avatar, ImagePicker, PhotoZoomModal } from "../utils";
+
+
 function PlayerCard({ player, currentUserId, onAction, actionLoading, onViewAvailability }) {
   const { id, name, city, country, friendship_status, friendship_requester, has_availability } = player;
   const isFriend = friendship_status==="accepted";
   const isPendingFromMe = friendship_status==="pending"&&Number(friendship_requester)===currentUserId;
   const isPendingToMe = friendship_status==="pending"&&Number(friendship_requester)!==currentUserId;
   const locationStr = [city, country].filter(Boolean).join(', ');
+
+
   return (
     <div className="player-card">
       <Avatar name={name} src={player.avatar_url}/>
@@ -14,6 +18,7 @@ function PlayerCard({ player, currentUserId, onAction, actionLoading, onViewAvai
         {locationStr&&<span className="player-meta"><IconMapPin/> {locationStr}</span>}
         {has_availability&&<span className="avail-badge">📅 Has availability</span>}
       </div>
+
       <div className="player-actions">
         {has_availability&&<button className="action-btn muted" style={{fontSize:11,padding:'5px 8px'}} onClick={()=>onViewAvailability&&onViewAvailability(player)}>Schedule</button>}
         {isFriend&&(<><span className="friend-badge">Friends</span><button className="action-btn danger" onClick={()=>onAction("remove",id)} disabled={actionLoading===id}>{actionLoading===id?<span className="spinner sm"/>:<IconUserMinus/>}</button></>)}
@@ -21,18 +26,23 @@ function PlayerCard({ player, currentUserId, onAction, actionLoading, onViewAvai
         {isPendingToMe&&(<><button className="action-btn success" onClick={()=>onAction("accept",id,String(friendship_requester))} disabled={actionLoading===id}>{actionLoading===id?<span className="spinner sm"/>:<><IconCheck/><span>Accept</span></>}</button><button className="action-btn danger-sm" onClick={()=>onAction("decline",id,String(friendship_requester))} disabled={actionLoading===id}><IconX/></button></>)}
         {!friendship_status&&(<button className="action-btn primary" onClick={()=>onAction("add",id)} disabled={actionLoading===id}>{actionLoading===id?<span className="spinner sm"/>:<><IconUserPlus/><span>Add</span></>}</button>)}
       </div>
+
     </div>
   );
 }
+
 
 // ── Player Availability Viewer (read-only) ─────────────────────
 function PlayerAvailabilityModal({ player, onClose }) {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     apiCall(`/players/${player.id}/availability`).then(s => { setSlots(s); setLoading(false); }).catch(() => setLoading(false));
   }, [player.id]);
+
   const byDay = DAYS.map((_, i) => slots.filter(s => s.day_of_week === i));
+  
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal">
@@ -60,6 +70,8 @@ function PlayerAvailabilityModal({ player, onClose }) {
     </div>
   );
 }
+
+
 
 // ── My Availability Manager ────────────────────────────────────
 function MyAvailabilityModal({ onClose }) {
@@ -141,6 +153,8 @@ function MyAvailabilityModal({ onClose }) {
     </div>
   );
 }
+
+
 
 function PlayersPage({ user }) {
   const [tab, setTab] = useState("search");

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiCall, DAYS, DAYS_SHORT, SURFACES, SURFACE_COLOR, STATUS_COLOR, STATUS_BG, toMin, fromMin, hoursInRange, computeFreeWindows, validEndTimes, validStartTimes, IconBall, IconStadium, IconLogout, IconSettings, IconEye, IconUsers, IconHome, IconSearch, IconCheck, IconX, IconUserPlus, IconUserMinus, IconMapPin, IconClock, IconPlus, IconEdit, IconTrash, IconCalendar, IconPhone, IconDollar, IconUsers2, IconToggle, IconFilter, IconBell, IconChat, IconGroup, IconSend, IconArrowLeft, IconShield, IconBookmark, IconArrow, Avatar, ImagePicker, PhotoZoomModal } from "../utils";
-function NotificationsPanel({ onClose, onUnreadChange }) {
+function NotificationsPanel({ onClose, onUnreadChange, onNavigate }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,15 +17,19 @@ function NotificationsPanel({ onClose, onUnreadChange }) {
   useEffect(() => { load(); }, [load]);
 
   const markAllRead = async () => {
-    await apiCall('/notifications/read-all', 'PATCH');
-    setNotifications(n => n.map(x => ({ ...x, is_read: true })));
-    onUnreadChange(0);
+    try {
+      await apiCall('/notifications/read-all', 'PATCH');
+      setNotifications(n => n.map(x => ({ ...x, is_read: true })));
+      onUnreadChange(0);
+    } catch {}
   };
 
   const markRead = async (id) => {
-    await apiCall(`/notifications/${id}/read`, 'PATCH');
-    setNotifications(n => n.map(x => x.id === id ? { ...x, is_read: true } : x));
-    onUnreadChange(notifications.filter(n => !n.is_read && n.id !== id).length);
+    try {
+      await apiCall(`/notifications/${id}/read`, 'PATCH');
+      setNotifications(n => n.map(x => x.id === id ? { ...x, is_read: true } : x));
+      onUnreadChange(notifications.filter(n => !n.is_read && n.id !== id).length);
+    } catch {}
   };
 
   // Auto mark all as read when panel closes
@@ -76,16 +80,45 @@ function NotificationsPanel({ onClose, onUnreadChange }) {
         <div className="notif-empty"><IconBell /><p>No notifications yet</p></div>
       )}
       <div className="notif-list">
-        {notifications.map(n => (
-          <div key={n.id} className={`notif-item ${!n.is_read ? 'unread' : ''}`} onClick={() => !n.is_read && markRead(n.id)}>
-            <span className="notif-icon">{typeIcon(n.type)}</span>
-            <div className="notif-body">
-              <p className="notif-msg">{n.message}</p>
-              <span className="notif-time">{timeAgo(n.created_at)}</span>
+        {notifications.map(n => {
+          const hint = (() => {
+            switch (n.type) {
+              case 'message':                   return '→ Open chat';
+              case 'group_message':             return '→ Open group';
+              case 'group_invite':              return '→ View invite';
+              case 'group_kicked':              return '→ My groups';
+              case 'friend_request':            return '→ Players';
+              case 'friend_accepted':           return '→ Open chat';
+              case 'booking':                   return '→ View booking';
+              case 'booking_confirmed':         return '→ My bookings';
+              case 'booking_cancelled':         return '→ My bookings';
+              case 'booking_cancelled_by_owner':return '→ My bookings';
+              default: return null;
+            }
+          })();
+          const isClickable = !!hint && !!onNavigate;
+          const handleClick = () => {
+            if (!n.is_read) markRead(n.id);
+            if (isClickable) { onNavigate({ type: n.type, related_id: n.related_id, related_type: n.related_type }); onClose(); }
+          };
+          return (
+            <div key={n.id}
+              className={`notif-item ${!n.is_read ? 'unread' : ''}`}
+              onClick={handleClick}
+              style={isClickable ? { cursor: 'pointer' } : {}}
+            >
+              <span className="notif-icon">{typeIcon(n.type)}</span>
+              <div className="notif-body">
+                <p className="notif-msg">{n.message}</p>
+                <span className="notif-time">
+                  {timeAgo(n.created_at)}
+                  {isClickable && <span style={{ color: '#4ade80', marginLeft: 6, fontSize: 10 }}>{hint}</span>}
+                </span>
+              </div>
+              {!n.is_read && <div className="notif-dot" />}
             </div>
-            {!n.is_read && <div className="notif-dot" />}
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

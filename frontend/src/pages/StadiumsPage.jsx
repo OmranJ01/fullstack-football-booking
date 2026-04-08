@@ -567,15 +567,17 @@ function BookingsPanel({ stadiumId, stadiumName }) {
                   <button className="action-btn danger" onClick={()=>updateStatus(b.id,"cancelled")} disabled={actionLoading===b.id}><IconX/></button>
                 </div>
               )}
-              <button
-                className="action-btn danger"
-                onClick={() => deleteBooking(b.id)}
-                disabled={actionLoading===`del-${b.id}`}
-                title="Remove from list"
-                style={{marginTop:6,fontSize:11,padding:'4px 10px',opacity:0.6}}
-              >
-                {actionLoading===`del-${b.id}` ? <span className="spinner sm"/> : <><IconTrash/> Remove</>}
-              </button>
+              {b.status === 'cancelled' && (
+                <button
+                  className="action-btn danger"
+                  onClick={() => deleteBooking(b.id)}
+                  disabled={actionLoading===`del-${b.id}`}
+                  title="Remove from list"
+                  style={{marginTop:6,fontSize:11,padding:'4px 10px',opacity:0.6}}
+                >
+                  {actionLoading===`del-${b.id}` ? <span className="spinner sm"/> : <><IconTrash/> Remove</>}
+                </button>
+              )}
             </div>
           </div>
           </div>
@@ -632,7 +634,7 @@ function StadiumCard({ stadium, onEdit, onDelete, onToggle, onSchedule, onViewBo
 // ══════════════════════════════════════════════════════════════════
 //  OWNER: STADIUMS PAGE
 // ══════════════════════════════════════════════════════════════════
-function OwnerStadiumsPage() {
+function OwnerStadiumsPage({ initialBookingStadiumId }) {
   const [stadiums, setStadiums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -640,7 +642,18 @@ function OwnerStadiumsPage() {
   const [schedulingStadium, setSchedulingStadium] = useState(null);
   const [bookingsStadium, setBookingsStadium] = useState(null);
 
-  const load = useCallback(async()=>{ setLoading(true); try{setStadiums(await apiCall("/stadiums/mine"));}catch{} setLoading(false); },[]);
+  const load = useCallback(async()=>{
+    setLoading(true);
+    try {
+      const data = await apiCall("/stadiums/mine");
+      setStadiums(data);
+      if (initialBookingStadiumId) {
+        const target = data.find(s => s.id === Number(initialBookingStadiumId));
+        if (target) setBookingsStadium(target);
+      }
+    } catch {}
+    setLoading(false);
+  },[initialBookingStadiumId]);
   useEffect(()=>{load();},[load]);
 
   return (
@@ -694,6 +707,7 @@ function BrowseStadiumsPage({ onMessageOwner }) {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ q: '', city: '', country: '', day: '', slot: '' });
   const [bookingStadium, setBookingStadium] = useState(null);
+  const [reviewsStadium, setReviewsStadium] = useState(null);
   const debounceRef = useRef(null);
 
   const TIME_OPTIONS = [];
@@ -780,6 +794,17 @@ function BrowseStadiumsPage({ onMessageOwner }) {
                 <div className="stat"><IconClock/><span>{s.open_time?.slice(0,5)} – {s.close_time?.slice(0,5)}</span></div>
                 {s.phone && <div className="stat"><IconPhone/><span>{s.phone}</span></div>}
               </div>
+              {(s.avg_rating || s.review_count > 0) && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <span style={{ display: 'inline-flex', gap: 1 }}>
+                    {[1,2,3,4,5].map(i => (
+                      <span key={i} style={{ fontSize: 13, color: i <= Math.round(s.avg_rating) ? '#facc15' : '#374151' }}>★</span>
+                    ))}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#facc15' }}>{s.avg_rating}</span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({s.review_count} review{s.review_count !== 1 ? 's' : ''})</span>
+                </div>
+              )}
               <div className="browse-owner"><Avatar name={s.owner_name} src={s.owner_avatar} size={22}/><span>by {s.owner_name}</span></div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="book-btn" style={{ flex: 1 }} onClick={() => setBookingStadium(s)}><IconCalendar/> Book a Slot</button>
@@ -787,12 +812,158 @@ function BrowseStadiumsPage({ onMessageOwner }) {
                   onClick={() => onMessageOwner && onMessageOwner({ partner_id: s.owner_id, partner_name: s.owner_name, partner_avatar: s.owner_avatar || null, partner_role: 'Stadium Owner' })}>
                   <IconChat /> Message
                 </button>
+                <button className="book-btn" style={{ background: 'rgba(250,204,21,0.08)', color: '#facc15', border: '1px solid rgba(250,204,21,0.25)', padding: '0 14px' }}
+                  onClick={() => setReviewsStadium(s)} title="View reviews">
+                  ★
+                </button>
               </div>
             </div>
           );
         })}
       </div>
       {bookingStadium&&<BookSlotModal stadium={bookingStadium} onClose={()=>setBookingStadium(null)} onBooked={()=>setBookingStadium(null)}/>}
+      {reviewsStadium&&<ReviewsModal stadium={reviewsStadium} onClose={()=>{setReviewsStadium(null);load(filters);}}/>}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  REVIEWS MODAL
+// ══════════════════════════════════════════════════════════════════
+function ReviewsModal({ stadium, onClose }) {
+  const [data, setData] = useState({ reviews: [], avg_rating: null, total: 0 });
+  const [loading, setLoading] = useState(true);
+  const [canReview, setCanReview] = useState(false);
+  const [form, setForm] = useState({ rating: 0, comment: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [hovered, setHovered] = useState(0);
+
+  const load = async () => {
+    setLoading(true);
+    try { setData(await apiCall(`/stadiums/${stadium.id}/reviews`)); } catch {}
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    // Check if user has a confirmed booking at this stadium
+    apiCall('/bookings/mine').then(bookings => {
+      const eligible = bookings.some(b => b.stadium_id === stadium.id && b.status === 'confirmed');
+      setCanReview(eligible);
+    }).catch(() => {});
+  }, [stadium.id]);
+
+  const myReview = data.reviews.find(r => r.is_mine);
+
+  useEffect(() => {
+    if (myReview) setForm({ rating: myReview.rating, comment: myReview.comment || '' });
+  }, [myReview?.rating]);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!form.rating) { setError('Please select a rating'); return; }
+    setSubmitting(true); setError('');
+    try {
+      await apiCall(`/stadiums/${stadium.id}/reviews`, 'POST', form);
+      await load();
+    } catch (err) { setError(err.message); }
+    setSubmitting(false);
+  };
+
+  const deleteReview = async () => {
+    try { await apiCall(`/stadiums/${stadium.id}/reviews`, 'DELETE'); await load(); setForm({ rating: 0, comment: '' }); } catch {}
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal wide-modal" style={{ maxHeight: '85vh', overflowY: 'auto' }}>
+        <div className="modal-header">
+          <div>
+            <h2 className="modal-title">Reviews — {stadium.name}</h2>
+            {data.avg_rating && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                {[1,2,3,4,5].map(i => <span key={i} style={{ fontSize: 16, color: i <= Math.round(data.avg_rating) ? '#facc15' : '#374151' }}>★</span>)}
+                <span style={{ fontWeight: 700, color: '#facc15' }}>{data.avg_rating}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({data.total} review{data.total !== 1 ? 's' : ''})</span>
+              </div>
+            )}
+          </div>
+          <button className="modal-close" onClick={onClose}><IconX/></button>
+        </div>
+
+        <div style={{ padding: '0 28px 28px' }}>
+          {/* Write / Edit Review */}
+          {canReview || myReview ? (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12 }}>{myReview ? 'Your Review' : 'Write a Review'}</h3>
+              <form onSubmit={submit}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 12 }}>
+                  {[1,2,3,4,5].map(i => (
+                    <span
+                      key={i}
+                      style={{ fontSize: 28, cursor: 'pointer', color: i <= (hovered || form.rating) ? '#facc15' : '#374151', transition: 'color 0.1s' }}
+                      onMouseEnter={() => setHovered(i)}
+                      onMouseLeave={() => setHovered(0)}
+                      onClick={() => setForm({ ...form, rating: i })}
+                    >★</span>
+                  ))}
+                  {form.rating > 0 && <span style={{ fontSize: 13, color: 'var(--text-muted)', alignSelf: 'center', marginLeft: 6 }}>{['','Terrible','Poor','OK','Good','Excellent'][form.rating]}</span>}
+                </div>
+                <textarea
+                  value={form.comment}
+                  onChange={e => setForm({ ...form, comment: e.target.value })}
+                  placeholder="Share your experience (optional)..."
+                  rows={2}
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
+                {error && <div className="error-msg" style={{ marginTop: 8 }}>{error}</div>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                  <button type="submit" className="submit-btn" style={{ flex: 1 }} disabled={submitting || !form.rating}>
+                    {submitting ? <span className="spinner" /> : myReview ? 'Update Review' : 'Submit Review'}
+                  </button>
+                  {myReview && (
+                    <button type="button" className="action-btn danger" onClick={deleteReview}>Delete</button>
+                  )}
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 20 }}>🔒</span>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>You need a <strong style={{ color: 'var(--text)' }}>confirmed booking</strong> at this stadium to leave a review.</span>
+            </div>
+          )}
+
+          {/* Reviews list */}
+          {loading && <div className="center-spinner"><span className="spinner large" /></div>}
+          {!loading && data.reviews.length === 0 && (
+            <div className="empty-state"><p>No reviews yet — be the first!</p></div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {data.reviews.map(r => (
+              <div key={r.id} style={{
+                background: 'var(--surface)', border: `1px solid ${r.is_mine ? 'rgba(74,222,128,0.35)' : 'var(--border)'}`,
+                borderRadius: 12, padding: '14px 16px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Avatar name={r.player_name} src={r.player_avatar} size={34} />
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>{r.player_name}{r.is_mine ? ' (you)' : ''}</div>
+                      <div style={{ display: 'flex', gap: 1 }}>
+                        {[1,2,3,4,5].map(i => <span key={i} style={{ fontSize: 14, color: i <= r.rating ? '#facc15' : '#374151' }}>★</span>)}
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(r.created_at).toLocaleDateString()}</span>
+                </div>
+                {r.comment && <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 8, fontStyle: 'italic' }}>"{r.comment}"</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
