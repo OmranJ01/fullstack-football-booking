@@ -72,23 +72,22 @@ router.post('/analyze-stats', authenticate, async (req, res) => {
          COUNT(DISTINCT pms.match_result_id)::int AS matches_played,
          COALESCE(SUM(pms.goals), 0)::int         AS total_goals,
          COALESCE(SUM(pms.assists), 0)::int       AS total_assists,
-         ROUND(AVG(pms.rating), 1)                AS avg_rating,
          MODE() WITHIN GROUP (ORDER BY pms.position) AS top_position
        FROM player_match_stats pms
        WHERE pms.player_id = $1`,
       [playerId]
     );
 
-    // Fetch recent 5 matches for context
+    // Fetch recent 8 matches with personal notes for deep analysis
     const recentRes = await pool.query(
       `SELECT mr.played_on, mr.score_a, mr.score_b,
-              pms.goals, pms.assists, pms.position, pms.rating,
+              pms.goals, pms.assists, pms.position, pms.notes_good, pms.notes_bad,
               g.name AS group_name
        FROM player_match_stats pms
        JOIN match_results mr ON pms.match_result_id = mr.id
        JOIN groups g ON mr.group_id = g.id
        WHERE pms.player_id = $1
-       ORDER BY mr.played_on DESC LIMIT 5`,
+       ORDER BY mr.played_on DESC LIMIT 8`,
       [playerId]
     );
 
@@ -98,26 +97,57 @@ router.post('/analyze-stats', authenticate, async (req, res) => {
       return res.json({ analysis: `${playerName} hasn't logged any match stats yet. Play some matches and log your performance to get an AI-powered analysis!` });
     }
 
-    const recentLines = recentRes.rows.map(m =>
-      `  - ${new Date(m.played_on).toLocaleDateString()}: ${m.goals}G ${m.assists}A` +
-      (m.position ? ` as ${m.position}` : '') +
-      (m.rating ? ` | rated ${m.rating}/10` : '') +
-      ` (score ${m.score_a}–${m.score_b})`
-    ).join('\n');
+    const recentLines = recentRes.rows.map((m, i) => {
+      const result = m.score_a > m.score_b ? 'WIN' : m.score_a < m.score_b ? 'LOSS' : 'DRAW';
+      const date = new Date(m.played_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+      let line = `  Match ${i + 1} [${date}] ${result} (${m.score_a}–${m.score_b})`;
+      line += ` | Goals: ${m.goals}, Assists: ${m.assists}`;
+      if (m.position) line += ` | Position: ${m.position}`;
+      if (m.notes_good) line += `\n    ✅ What went well: "${m.notes_good}"`;
+      if (m.notes_bad)  line += `\n    ❌ What went wrong: "${m.notes_bad}"`;
+      return line;
+    }).join('\n\n');
 
-    const prompt = `You are a football performance analyst. Analyze the following player stats and give a brief, honest, motivating analysis.
+    const hasNotes = recentRes.rows.some(m => m.notes_good || m.notes_bad);
 
-Player: ${playerName}
-Total Matches: ${s.matches_played}
+    const prompt = `You are an elite football performance coach and analyst with 20 years of experience developing players at all levels. Your job is to give ${playerName} a deeply personalised, honest, and actionable performance review based on their match data and personal notes.
+
+═══ PLAYER DATA ═══
+Name: ${playerName}
+Total Matches Logged: ${s.matches_played}
 Total Goals: ${s.total_goals}
 Total Assists: ${s.total_assists}
-Average Rating: ${s.avg_rating ?? 'N/A'}/10
 Most Played Position: ${s.top_position || 'Not recorded'}
 
-Recent matches:
+═══ RECENT MATCH LOG (with personal notes) ═══
 ${recentLines}
 
-Write 2-3 sentences max. Mention one clear strength and one specific area to improve. Be direct and encouraging. Do not use bullet points.`;
+═══ YOUR TASK ═══
+Write a structured performance review with these EXACT sections. Be specific — reference the player's actual notes and numbers, not generic advice.
+
+**Overall Performance Summary**
+2-3 sentences summarising their overall level based on stats and results. Mention goal/assist rate, win rate, consistency.
+
+**Key Strengths**
+2-3 bullet points identifying genuine strengths. If they wrote positive notes, quote or reference them specifically. Back each point with data.
+
+**Areas to Improve**
+2-3 bullet points on specific weaknesses. Reference their own negative notes directly. Be honest but constructive.
+
+**Concrete Action Plan**
+3 specific, practical drills or habits they should do THIS WEEK to fix the weaknesses. Be precise — not "improve passing" but "practice 20-minute rondos to improve passing under pressure".
+
+**Mental & Tactical Advice**
+1-2 sentences on mindset or tactical awareness based on their patterns (positions played, win/loss pattern, notes).
+
+${!hasNotes ? 'Note: This player has not yet added personal match notes. Encourage them to add "what went well" and "what went wrong" notes after each match for deeper analysis.\n' : ''}
+FORMATTING RULES — strictly follow:
+- No markdown symbols: no **, no *, no ##, no bullet dashes
+- Use plain section headers on their own line (e.g. "Overall Performance Summary")
+- Use numbered lists only for the Action Plan (1. 2. 3.)
+- Write in clean flowing sentences everywhere else
+- Tone: direct, honest, specific, like a real coach talking to a player face to face
+- Total length: 200-300 words`;
 
     const analysis = await generateWithFallback(prompt);
     res.json({ analysis, playerName, summary: s });

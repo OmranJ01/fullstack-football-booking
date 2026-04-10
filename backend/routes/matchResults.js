@@ -25,7 +25,8 @@ router.get('/groups/:groupId', authenticate, async (req, res) => {
                 'goals', pms.goals,
                 'assists', pms.assists,
                 'position', pms.position,
-                'rating', pms.rating
+                'notes_good', pms.notes_good,
+                'notes_bad', pms.notes_bad
               ) ORDER BY pms.goals DESC)
                FROM player_match_stats pms
                JOIN users us ON pms.player_id=us.id
@@ -102,7 +103,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 
 // POST /api/match-results/:id/stats  — log/update own stats for a match
 router.post('/:id/stats', authenticate, async (req, res) => {
-  const { goals, assists, position, rating } = req.body;
+  const { goals, assists, position, notes_good, notes_bad } = req.body;
   try {
     const check = await pool.query(
       `SELECT mr.id FROM match_results mr
@@ -113,12 +114,12 @@ router.post('/:id/stats', authenticate, async (req, res) => {
     if (!check.rows.length) return res.status(403).json({ error: 'Not a member of this group' });
 
     const r = await pool.query(
-      `INSERT INTO player_match_stats (match_result_id, player_id, goals, assists, position, rating)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO player_match_stats (match_result_id, player_id, goals, assists, position, notes_good, notes_bad)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (match_result_id, player_id) DO UPDATE
-         SET goals=$3, assists=$4, position=$5, rating=$6
+         SET goals=$3, assists=$4, position=$5, notes_good=$6, notes_bad=$7
        RETURNING *`,
-      [req.params.id, req.user.id, goals ?? 0, assists ?? 0, position || null, rating || null]
+      [req.params.id, req.user.id, goals ?? 0, assists ?? 0, position || null, notes_good || null, notes_bad || null]
     );
     res.status(201).json(r.rows[0]);
   } catch (err) { console.error(err); res.status(500).json({ error: 'Server error' }); }
@@ -138,7 +139,7 @@ router.get('/players/:playerId/stats', authenticate, async (req, res) => {
          COUNT(DISTINCT pms.match_result_id)::int AS matches_played,
          COALESCE(SUM(pms.goals), 0)::int         AS total_goals,
          COALESCE(SUM(pms.assists), 0)::int       AS total_assists,
-         ROUND(AVG(pms.rating), 1)                AS avg_rating
+         MODE() WITHIN GROUP (ORDER BY pms.position) AS top_position
        FROM player_match_stats pms
        WHERE pms.player_id = $1`,
       [playerId]
@@ -146,7 +147,7 @@ router.get('/players/:playerId/stats', authenticate, async (req, res) => {
     const recentRes = await pool.query(
       `SELECT mr.id AS match_id, mr.played_on, mr.score_a, mr.score_b, mr.notes,
               g.name AS group_name, g.id AS group_id,
-              pms.goals, pms.assists, pms.position, pms.rating
+              pms.goals, pms.assists, pms.position, pms.notes_good, pms.notes_bad
        FROM player_match_stats pms
        JOIN match_results mr ON pms.match_result_id = mr.id
        JOIN groups g ON mr.group_id = g.id

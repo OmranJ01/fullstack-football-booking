@@ -31,7 +31,7 @@ function StatCard({ label, value, icon, color }) {
         <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
         <div style={{ color, opacity: 0.7 }}>{icon}</div>
       </div>
-      <span style={{ fontSize: 40, fontWeight: 800, color, lineHeight: 1, letterSpacing: '-1px' }}>{value ?? '—'}</span>
+      <span style={{ fontSize: String(value ?? '').length > 6 ? 20 : String(value ?? '').length > 3 ? 28 : 40, fontWeight: 800, color, lineHeight: 1, letterSpacing: '-1px' }}>{value ?? '—'}</span>
       <div style={{ position: 'absolute', bottom: -16, right: -10, fontSize: 70, opacity: 0.04, color, pointerEvents: 'none' }}>{value ?? ''}</div>
     </div>
   );
@@ -166,14 +166,24 @@ function AIAnalystCard({ playerId }) {
               {expanded === i && (
                 <div style={{ padding: '4px 18px 14px 38px' }}>
                   <div style={{
-                    fontSize: 13, lineHeight: 1.75,
+                    fontSize: 13, lineHeight: 1.8,
                     color: entry.isError ? '#f87171' : 'var(--text)',
                     background: entry.isError ? 'rgba(248,113,113,0.06)' : 'rgba(74,222,128,0.04)',
                     border: `1px solid ${entry.isError ? 'rgba(248,113,113,0.15)' : 'rgba(74,222,128,0.12)'}`,
                     borderLeft: `3px solid ${entry.isError ? '#f87171' : '#4ade80'}`,
                     borderRadius: 10, padding: '14px 16px', marginBottom: 8,
                   }}>
-                    {entry.text}
+                    {entry.text.split('\n').map((line, i) => {
+                      const isHeader = line.trim().length > 0 && line.trim().length < 40 && !line.trim().match(/^\d\./);
+                      return (
+                        <span key={i}>
+                          {isHeader
+                            ? <strong style={{ color: '#4ade80', display: 'block', marginTop: i > 0 ? 12 : 0, marginBottom: 4 }}>{line}</strong>
+                            : <span>{line}{i < entry.text.split('\n').length - 1 ? <br/> : null}</span>
+                          }
+                        </span>
+                      );
+                    })}
                   </div>
                   <button onClick={() => { setHistory(prev => prev.filter((_, idx) => idx !== i)); setExpanded(null); }}
                     style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 11, padding: 0 }}>
@@ -204,40 +214,53 @@ function MatchCard({ m }) {
   return (
     <div style={{
       background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,
-      padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap',
+      padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12,
+      transition: 'border-color 0.15s',
     }}
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(74,222,128,0.3)'}
       onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
     >
-      <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: `${rc}18`, border: `1px solid ${rc}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: rc }}>{result}</div>
-      <div style={{ flex: 1, minWidth: 130 }}>
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{m.group_name}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><IconCalendar /> {new Date(m.played_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          <span style={{ fontWeight: 800, fontSize: 13, color: rc, background: `${rc}18`, border: `1px solid ${rc}33`, borderRadius: 7, padding: '2px 9px' }}>{scoreA} – {scoreB}</span>
-          {m.notes && <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{m.notes}"</span>}
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
-        {m.position && <div style={{ padding: '5px 11px', borderRadius: 7, background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.25)', fontSize: 12, fontWeight: 600, color: '#c084fc' }}>{m.position}</div>}
-        <div style={{ display: 'flex', gap: 12, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase' }}>Goals</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#60a5fa', lineHeight: 1 }}>{m.goals}</div>
-          </div>
-          <div style={{ width: 1, background: 'var(--border)' }} />
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase' }}>Assists</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: '#fb923c', lineHeight: 1 }}>{m.assists}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+        <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: `${rc}18`, border: `1px solid ${rc}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, color: rc }}>{result}</div>
+        <div style={{ flex: 1, minWidth: 130 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>{m.group_name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}><IconCalendar /> {new Date(m.played_on).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span style={{ fontWeight: 800, fontSize: 13, color: rc, background: `${rc}18`, border: `1px solid ${rc}33`, borderRadius: 7, padding: '2px 9px' }}>{scoreA} – {scoreB}</span>
+            {m.notes && <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>"{m.notes}"</span>}
           </div>
         </div>
-        {m.rating && (
-          <div style={{ padding: '8px 12px', borderRadius: 10, minWidth: 88, background: 'rgba(250,204,21,0.06)', border: '1px solid rgba(250,204,21,0.2)' }}>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>Rating</div>
-            <StarBar rating={m.rating} />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          {m.position && <div style={{ padding: '5px 11px', borderRadius: 7, background: 'rgba(192,132,252,0.1)', border: '1px solid rgba(192,132,252,0.25)', fontSize: 12, fontWeight: 600, color: '#c084fc' }}>{m.position}</div>}
+          <div style={{ display: 'flex', gap: 12, padding: '8px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase' }}>Goals</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#60a5fa', lineHeight: 1 }}>{m.goals}</div>
+            </div>
+            <div style={{ width: 1, background: 'var(--border)' }} />
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2, textTransform: 'uppercase' }}>Assists</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#fb923c', lineHeight: 1 }}>{m.assists}</div>
+            </div>
           </div>
-        )}
+        </div>
       </div>
+      {(m.notes_good || m.notes_bad) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {m.notes_good && (
+            <div style={{ display: 'flex', gap: 8, fontSize: 12, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', borderRadius: 8, padding: '7px 12px' }}>
+              <span style={{ flexShrink: 0 }}>✅</span>
+              <span style={{ color: 'var(--text)', opacity: 0.85 }}>{m.notes_good}</span>
+            </div>
+          )}
+          {m.notes_bad && (
+            <div style={{ display: 'flex', gap: 8, fontSize: 12, background: 'rgba(248,113,113,0.06)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: 8, padding: '7px 12px' }}>
+              <span style={{ flexShrink: 0 }}>❌</span>
+              <span style={{ color: 'var(--text)', opacity: 0.85 }}>{m.notes_bad}</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -326,10 +349,10 @@ export default function StatsPage({ user }) {
 
           {/* Stat cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(150px,1fr))', gap: 14, marginBottom: 28 }}>
-            <StatCard label="Matches"    value={summary?.matches_played} icon={<IconMatches />} color="#4ade80" />
-            <StatCard label="Goals"      value={summary?.total_goals}    icon={<IconGoal />}    color="#60a5fa" />
-            <StatCard label="Assists"    value={summary?.total_assists}  icon={<IconAssist />}  color="#fb923c" />
-            <StatCard label="Avg Rating" value={summary?.avg_rating ?? '—'} icon={<IconStar />} color="#facc15" />
+            <StatCard label="Matches"      value={summary?.matches_played}   icon={<IconMatches />} color="#4ade80" />
+            <StatCard label="Goals"        value={summary?.total_goals}      icon={<IconGoal />}    color="#60a5fa" />
+            <StatCard label="Assists"      value={summary?.total_assists}    icon={<IconAssist />}  color="#fb923c" />
+            <StatCard label="Position"     value={summary?.top_position ?? '—'} icon={<IconStar />} color="#facc15" />
           </div>
 
           {/* Match history */}

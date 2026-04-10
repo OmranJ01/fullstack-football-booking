@@ -765,7 +765,8 @@ function MatchesTab({ group, user, isAdmin }) {
                         {s.position && <span style={{ color: '#c084fc' }}>{s.position}</span>}
                         <span style={{ color: '#60a5fa' }}>⚽ {s.goals}</span>
                         <span style={{ color: '#fb923c' }}>🅰️ {s.assists}</span>
-                        {s.rating && <span><StarDisplay rating={s.rating} /> <span style={{ color: '#facc15', fontSize: 11 }}>{s.rating}/10</span></span>}
+                        {s.notes_good && <span style={{ color: '#4ade80', fontSize: 11 }}>✅ {s.notes_good.slice(0, 40)}{s.notes_good.length > 40 ? '…' : ''}</span>}
+                        {s.notes_bad && <span style={{ color: '#f87171', fontSize: 11 }}>❌ {s.notes_bad.slice(0, 40)}{s.notes_bad.length > 40 ? '…' : ''}</span>}
                       </div>
                     ))}
                   </div>
@@ -853,7 +854,8 @@ function LogStatsModal({ match, userId, onClose, onSaved }) {
     goals: existing?.goals ?? 0,
     assists: existing?.assists ?? 0,
     position: existing?.position || '',
-    rating: existing?.rating || '',
+    notes_good: existing?.notes_good || '',
+    notes_bad: existing?.notes_bad || '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -866,7 +868,8 @@ function LogStatsModal({ match, userId, onClose, onSaved }) {
         goals: parseInt(form.goals) || 0,
         assists: parseInt(form.assists) || 0,
         position: form.position || null,
-        rating: form.rating ? parseFloat(form.rating) : null,
+        notes_good: form.notes_good || null,
+        notes_bad: form.notes_bad || null,
       });
       onSaved();
     } catch (err) { setError(err.message); }
@@ -897,8 +900,35 @@ function LogStatsModal({ match, userId, onClose, onSaved }) {
             </select>
           </div>
           <div className="field">
-            <label>Personal Rating <span className="optional">(1–10, optional)</span></label>
-            <input name="rating" type="number" min="1" max="10" step="0.5" value={form.rating} onChange={handle} placeholder="e.g. 7.5" />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: '#4ade80', fontSize: 15 }}>✅</span> What went well?
+              <span className="optional">(optional)</span>
+            </label>
+            <textarea
+              name="notes_good"
+              value={form.notes_good}
+              onChange={handle}
+              placeholder="e.g. Good movement off the ball, won most headers, two key passes..."
+              rows={3}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+          <div className="field">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ color: '#f87171', fontSize: 15 }}>❌</span> What went wrong?
+              <span className="optional">(optional)</span>
+            </label>
+            <textarea
+              name="notes_bad"
+              value={form.notes_bad}
+              onChange={handle}
+              placeholder="e.g. Lost the ball too often under pressure, poor first touch, mistimed tackles..."
+              rows={3}
+              style={{ resize: 'vertical' }}
+            />
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', padding: '6px 10px', background: 'rgba(74,222,128,0.05)', border: '1px solid rgba(74,222,128,0.1)', borderRadius: 8 }}>
+            💡 The more detail you add, the better the AI analyst can coach you.
           </div>
           {error && <div className="error-msg">{error}</div>}
           <div className="modal-actions">
